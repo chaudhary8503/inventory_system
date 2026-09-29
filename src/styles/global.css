@@ -1,0 +1,139 @@
+@import './tokens.css';
+
+/* Base, form field and page container rules copied from
+   sales_dashboard/src/styles/global.css (itself from unified-portal +
+   production-monitor). Table/tag rules copied from sales_dashboard's
+   TransactionTable.css and moved here, since two tables share them. */
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+.mono {
+  font-family: var(--font-mono);
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 28px;
+  box-shadow: 0 1px 3px rgba(27, 35, 33, 0.05);
+}
+
+.section-title {
+  font-size: 14px;
+  font-weight: 600;
+  margin: 0 0 12px;
+}
+
+h1.page-title {
+  font-size: 20px;
+  font-weight: 600;
+  margin: 0 0 4px;
+}
+p.page-sub {
+  font-size: 14px;
+  color: var(--muted);
+  margin: 0 0 28px;
+}
+
+/* ---------- shared form styles (CutForm) ---------- */
+form .field {
+  min-width: 0;
+}
+form label {
+  display: block;
+  font-size: 12.5px;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+form select,
+form input {
+  box-sizing: border-box;
+  width: 100%;
+  height: 42px;
+  padding: 0 11px;
+  font-family: inherit;
+  font-size: 14px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: #fff;
+  color: var(--ink);
+}
+form select:focus,
+form input:focus {
+  outline: 2px solid var(--brand);
+  outline-offset: 1px;
+}
+
+/* ---------- page container ---------- */
+.page {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  padding: 40px 48px;
+}
+.page-inner {
+  width: 100%;
+  max-width: 960px;
+}
+
+@media (max-width: 640px) {
+  .page {
+    padding: 28px 16px;
+  }
+}
+
+/* ---------- shared table styles (BundleTable, CutLog) ---------- */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13.5px;
+}
+th {
+  text-align: left;
+  font-weight: 500;
+  color: var(--muted);
+  font-size: 12px;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+td {
+  padding: 10px 10px;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+tr:last-child td {
+  border-bottom: none;
+}
+th.num,
+td.num {
+  text-align: right;
+}
+
+.table-scroll {
+  overflow-x: auto;
+}
+
+.tag {
+  padding: 3px 9px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.table-note {
+  margin: 12px 0 0;
+  font-size: 12.5px;
+  color: var(--muted);
+}

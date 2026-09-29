@@ -1,0 +1,28 @@
+/* Copied verbatim from cable_production/production-monitor/src/styles/tokens.css
+   (same file as unified-portal/src/styles/tokens.css).
+   Keep all three copies in sync so every app shares one palette. */
+/*
+  Design tokens — palette matches the Powerant logo (powerant-logo.jpg):
+  navy blue (#0D3B5F) as the brand/accent color on a white/near-white
+  background. Amber and green stay as semantic status colors (anomaly /
+  normal), independent of brand color. Fonts are IBM Plex Sans / Mono.
+*/
+:root {
+  --bg: #f5f7fa;
+  --surface: #ffffff;
+  --ink: #1b2321;
+  --muted: #5b6560;
+  --border: #d8ddd9;
+
+  --brand: #0d3b5f;
+  --brand-dark: #0a2e4a;
+  --brand-light: #e3ebf2;
+
+  --amber: #c97a0a;
+  --amber-light: #fbeeda;
+  --green: #3f7a56;
+  --green-light: #e4f0e9;
+
+  --font-sans: 'IBM Plex Sans', sans-serif;
+  --font-mono: 'IBM Plex Mono', monospace;
+}
