@@ -1,0 +1,327 @@
+/* Shared building blocks used across pages: buttons, forms, filters, tags,
+   banners. Colours come from tokens.css only. */
+
+/* ---------- buttons ---------- */
+button {
+  font-family: inherit;
+}
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 38px;
+  padding: 0 16px;
+  border-radius: 7px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid transparent;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.btn-primary {
+  background: var(--brand);
+  color: #fff;
+}
+.btn-primary:hover {
+  background: var(--brand-dark);
+}
+.btn-secondary {
+  background: var(--surface);
+  color: var(--ink);
+  border-color: var(--border);
+}
+.btn-secondary:hover {
+  background: var(--bg);
+}
+.btn-danger {
+  background: var(--surface);
+  color: var(--amber);
+  border-color: var(--amber);
+}
+.btn-small {
+  height: 30px;
+  padding: 0 10px;
+  font-size: 12.5px;
+}
+.btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.link-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--brand);
+  font-size: inherit;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+a {
+  color: var(--brand);
+}
+
+/* ---------- forms ---------- */
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px 20px;
+  margin-bottom: 20px;
+}
+.form-grid .span-2 {
+  grid-column: span 2;
+}
+.field label,
+.field .label {
+  display: block;
+  font-size: 12.5px;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+.field input,
+.field select,
+.field textarea,
+.filters input,
+.filters select {
+  box-sizing: border-box;
+  width: 100%;
+  height: 40px;
+  padding: 0 11px;
+  font-family: inherit;
+  font-size: 14px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: #fff;
+  color: var(--ink);
+}
+.field textarea {
+  height: auto;
+  min-height: 72px;
+  padding: 9px 11px;
+  resize: vertical;
+}
+.field input:focus,
+.field select:focus,
+.field textarea:focus,
+.filters input:focus,
+.filters select:focus {
+  outline: 2px solid var(--brand);
+  outline-offset: 1px;
+}
+.field .hint {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 5px;
+}
+.inline-input {
+  display: flex;
+  gap: 8px;
+}
+.inline-input > :first-child {
+  flex: 1;
+  min-width: 0;
+}
+.inline-input select {
+  width: auto;
+  min-width: 84px;
+}
+.checkbox {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  cursor: pointer;
+}
+.checkbox input {
+  width: 16px;
+  height: 16px;
+}
+.form-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+/* ---------- page header row + filters ---------- */
+.page-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+.filters > * {
+  flex: 1 1 160px;
+  min-width: 0;
+}
+.filters .grow {
+  flex: 3 1 240px;
+}
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+
+/* ---------- tags ---------- */
+.tag.ok {
+  background: var(--green-light);
+  color: var(--green);
+}
+.tag.low {
+  background: var(--amber-light);
+  color: var(--amber);
+}
+.tag.out {
+  background: var(--amber);
+  color: #fff;
+}
+.tag.muted {
+  background: var(--bg);
+  color: var(--muted);
+  border: 1px solid var(--border);
+}
+.tag.brand {
+  background: var(--brand-light);
+  color: var(--brand);
+}
+.qty-low {
+  color: var(--amber);
+  font-weight: 600;
+}
+.qty-zero {
+  color: var(--muted);
+}
+.pos {
+  color: var(--green);
+}
+.neg {
+  color: var(--amber);
+}
+
+/* ---------- banners and states ---------- */
+.banner {
+  padding: 12px 14px;
+  border-radius: 8px;
+  font-size: 14px;
+  margin-bottom: 16px;
+}
+.banner.ok {
+  background: var(--green-light);
+  color: var(--green);
+}
+.banner.error {
+  background: var(--amber-light);
+  color: var(--amber);
+}
+.banner.info {
+  background: var(--brand-light);
+  color: var(--brand);
+}
+.state {
+  padding: 28px 0;
+  text-align: center;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+/* ---------- tables ---------- */
+tr.clickable {
+  cursor: pointer;
+}
+tr.clickable:hover td {
+  background: var(--bg);
+}
+tr.highlighted td {
+  background: var(--brand-light);
+}
+td.wrap {
+  white-space: normal;
+}
+.sub {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+/* ---------- key facts row ---------- */
+.facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 14px;
+  margin-bottom: 22px;
+}
+.fact {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px 16px;
+  min-width: 0;
+}
+.fact-label {
+  font-size: 12px;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+.fact-value {
+  font-size: 18px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 640px) {
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+  .form-grid .span-2 {
+    grid-column: auto;
+  }
+  .card {
+    padding: 18px;
+  }
+}
+
+/* ---------- small inputs inside table rows ---------- */
+.reason-input,
+.cell-input,
+.reorder-input {
+  height: 32px;
+  padding: 0 9px;
+  font-family: inherit;
+  font-size: 13.5px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: #fff;
+  color: var(--ink);
+}
+.reason-input {
+  width: 180px;
+}
+.cell-input {
+  width: 100%;
+  max-width: 260px;
+}
+.cell-input.narrow,
+.reorder-input {
+  width: 90px;
+  text-align: right;
+}
+.unit-label {
+  align-self: center;
+  color: var(--muted);
+  font-size: 13px;
+  min-width: 28px;
+}
+.checkbox.rebuild {
+  margin-top: 8px;
+}
