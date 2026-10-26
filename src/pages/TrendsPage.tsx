@@ -55,7 +55,9 @@ function TrendsPage({ session }: { session: Session }) {
             <option value="">All materials</option>
             <option value="copper">{CATEGORY_LABELS.copper}</option>
             <option value="pvc">{CATEGORY_LABELS.pvc}</option>
+            <option value="semi_finished">{CATEGORY_LABELS.semi_finished}</option>
             <option value="consumable">{CATEGORY_LABELS.consumable}</option>
+            <option value="scrap">{CATEGORY_LABELS.scrap}</option>
           </select>
           <LocationSelect locations={session.locations} value={locationId} onChange={setLocationId} placeholder="All locations" />
         </div>

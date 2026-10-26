@@ -1,11 +1,12 @@
 import { useState } from 'react';
-import { balances, bobbinNumbers, itemCosts, listBobbins, listMovements, setReorderLevel, stockAvailability } from '../api';
+import { balances, bundleNumbers, itemCosts, listBundles, listMovements, setReorderLevel, stockAvailability } from '../api';
 import { Banner, Empty, Loading } from '../components/Common';
 import {
   CATEGORY_LABELS,
   formatDate,
   formatMoney,
   formatQty,
+  formatQtyIn,
   formatSigned,
   formatUnitCost,
   MOVEMENT_LABELS,
@@ -30,14 +31,14 @@ function ItemPage({ session, itemId, focusLocation }: ItemPageProps) {
     [itemId],
   );
   const costs = useAsync(() => (itemId && can('view_costs') ? itemCosts([itemId]) : Promise.resolve([])), [itemId]);
-  const bobbins = useAsync(
-    () => (itemId && isCable && can('view_bobbins') ? listBobbins(itemId, null, false) : Promise.resolve([])),
+  const bundles = useAsync(
+    () => (itemId && isCable && can('view_bundles') ? listBundles(itemId, null, false) : Promise.resolve([])),
     [itemId, isCable],
   );
   const movements = useAsync(async () => {
     if (!itemId || !can('view_movements')) return null;
     const rows = await listMovements({ itemId, limit: 60 });
-    const numbers = await bobbinNumbers([...new Set(rows.map((r) => r.bobbin_id).filter((x): x is string => !!x))]);
+    const numbers = await bundleNumbers([...new Set(rows.map((r) => r.bundle_id).filter((x): x is string => !!x))]);
     return { rows, numbers };
   }, [itemId]);
 
@@ -109,7 +110,7 @@ function ItemPage({ session, itemId, focusLocation }: ItemPageProps) {
         {cost && (
           <>
             <div className="fact">
-              <div className="fact-label">{isCable ? 'Standard cost (for cost-pending bobbins)' : 'Average cost'}</div>
+              <div className="fact-label">{isCable ? 'Standard cost (for cost-pending bundles)' : 'Average cost'}</div>
               <div className="fact-value mono">
                 {isCable
                   ? cost.standard_cost === null
@@ -140,20 +141,20 @@ function ItemPage({ session, itemId, focusLocation }: ItemPageProps) {
           onSaved={stock.reload}
         />
 
-        {isCable && can('view_bobbins') && (
+        {isCable && can('view_bundles') && (
           <div className="card">
-            <div className="section-title">Bobbins</div>
-            {bobbins.error && <Banner kind="error">{bobbins.error}</Banner>}
-            {bobbins.loading && !bobbins.data ? (
+            <div className="section-title">Bundles</div>
+            {bundles.error && <Banner kind="error">{bundles.error}</Banner>}
+            {bundles.loading && !bundles.data ? (
               <Loading />
-            ) : (bobbins.data ?? []).length === 0 ? (
-              <Empty>No bobbins with cable left.</Empty>
+            ) : (bundles.data ?? []).length === 0 ? (
+              <Empty>No bundles with cable left.</Empty>
             ) : (
               <div className="table-scroll">
                 <table>
                   <thead>
                     <tr>
-                      <th>Bobbin</th>
+                      <th>Bundle</th>
                       <th>Location</th>
                       <th className="num">Remaining</th>
                       <th className="num">Original</th>
@@ -161,13 +162,13 @@ function ItemPage({ session, itemId, focusLocation }: ItemPageProps) {
                     </tr>
                   </thead>
                   <tbody>
-                    {(bobbins.data ?? []).map((b) => (
+                    {(bundles.data ?? []).map((b) => (
                       <tr
-                        key={b.bobbin_id}
+                        key={b.bundle_id}
                         className={`clickable${b.location_id === focusLocation ? ' highlighted' : ''}`}
-                        onClick={() => go(`bobbin/${b.bobbin_id}`)}
+                        onClick={() => go(`bundle/${b.bundle_id}`)}
                       >
-                        <td className="mono">{b.bobbin_no}</td>
+                        <td className="mono">{b.bundle_no}</td>
                         <td>{b.location_name}</td>
                         <td className="mono num">{formatQty(b.remaining_ft, 'ft')}</td>
                         <td className="mono num">{formatQty(b.original_ft, 'ft')}</td>
@@ -202,7 +203,7 @@ function ItemPage({ session, itemId, focusLocation }: ItemPageProps) {
                       <th>Date</th>
                       <th>Type</th>
                       <th>Location</th>
-                      {isCable && <th>Bobbin</th>}
+                      {isCable && <th>Bundle</th>}
                       <th className="num">Change</th>
                       <th className="num">Balance after</th>
                       <th>Reason / note</th>
@@ -214,9 +215,9 @@ function ItemPage({ session, itemId, focusLocation }: ItemPageProps) {
                         <td className="mono">{formatDate(m.movement_date)}</td>
                         <td>{MOVEMENT_LABELS[m.movement_type] ?? m.movement_type}</td>
                         <td>{locationName(session, m.location_id)}</td>
-                        {isCable && <td className="mono">{m.bobbin_id ? (movements.data!.numbers[m.bobbin_id] ?? '—') : '—'}</td>}
+                        {isCable && <td className="mono">{m.bundle_id ? (movements.data!.numbers[m.bundle_id] ?? '—') : '—'}</td>}
                         <td className={`mono num ${m.quantity > 0 ? 'pos' : 'neg'}`}>{formatSigned(m.quantity, item.base_unit)}</td>
-                        <td className="mono num">{formatQty(m.balance_after)}</td>
+                        <td className="mono num">{formatQtyIn(m.balance_after, item.base_unit)}</td>
                         <td className="wrap">{[m.reason, m.note].filter(Boolean).join(' · ') || '—'}</td>
                       </tr>
                     ))}

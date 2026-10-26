@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import './App.css';
-import { listItems, listLocations, myStockLocations, type Item, type Location } from './api';
+import { getMyLengthUnit, getSettings, listItems, listLocations, myStockLocations, type Item, type Location } from './api';
 import { canOpenModule, loadSessionUser, signOut, type SessionUser } from './auth';
 import { Banner, Loading, NoAccess } from './components/Common';
 import ErrorBoundary from './components/ErrorBoundary';
@@ -8,8 +8,8 @@ import Header, { type NavEntry } from './components/Header';
 import { MODULE, PORTAL_URL } from './config';
 import { supabase } from './lib/supabase';
 import AdjustPage from './pages/AdjustPage';
-import BobbinPage from './pages/BobbinPage';
-import BobbinsPage from './pages/BobbinsPage';
+import BundlePage from './pages/BundlePage';
+import BundlesPage from './pages/BundlesPage';
 import ItemPage from './pages/ItemPage';
 import ItemsPage from './pages/ItemsPage';
 import LocationsPage from './pages/LocationsPage';
@@ -20,6 +20,11 @@ import SettingsPage from './pages/SettingsPage';
 import SpecsPage from './pages/SpecsPage';
 import StockPage from './pages/StockPage';
 import TransferPage from './pages/TransferPage';
+import ChallanPage from './pages/ChallanPage';
+import ChallansPage from './pages/ChallansPage';
+import ImportPage from './pages/ImportPage';
+import MinimumsPage from './pages/MinimumsPage';
+import { setLengthUnit, type LengthUnit } from './format';
 import TrendsPage from './pages/TrendsPage';
 import ValuationPage from './pages/ValuationPage';
 import { useRoute } from './router';
@@ -73,14 +78,22 @@ function InventoryApp({ user }: { user: SessionUser }) {
   const [stockLocationIds, setStockLocationIds] = useState<string[]>([]);
   const [ready, setReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [lengthUnit, setUnit] = useState<LengthUnit>('ft');
+  const [reasons, setReasons] = useState<string[]>([]);
 
   const reloadCatalog = useCallback(async () => {
     try {
-      const [i, l, mine] = await Promise.all([
+      const [i, l, mine, unit, settings] = await Promise.all([
         listItems(true),
         listLocations(),
         user.isOwner ? Promise.resolve<string[] | null>(null) : myStockLocations(user.profile.user_id),
+        getMyLengthUnit(),
+        getSettings().catch(() => null),
       ]);
+      // Feet / metres is the person's own setting (Portal); set before anything renders.
+      setLengthUnit(unit);
+      setUnit(unit);
+      setReasons(settings?.adjustment_reasons ?? []);
       setItems(i);
       setLocations(l);
       setStockLocationIds(mine ?? l.map((x) => x.location_id));
@@ -98,26 +111,29 @@ function InventoryApp({ user }: { user: SessionUser }) {
     void reloadCatalog();
   }, [reloadCatalog]);
 
-  const session: Session = { user, can, items, locations, stockLocationIds, reloadCatalog };
+  const session: Session = { user, can, items, locations, stockLocationIds, reloadCatalog, lengthUnit, adjustmentReasons: reasons };
 
   const nav: NavEntry[] = [
     { key: 'stock', label: 'Stock', allowed: can('view_stock') },
-    { key: 'bobbins', label: 'Bobbins', allowed: can('view_bobbins') },
+    { key: 'bundles', label: 'Bundles', allowed: can('view_bundles') },
     { key: 'movements', label: 'Movements', allowed: can('view_movements') },
     { key: 'adjust', label: 'Adjust', allowed: can('adjust_stock') },
     { key: 'transfer', label: 'Transfer', allowed: can('record_transfer') },
+    { key: 'challans', label: 'Challans', allowed: can('record_transfer') || can('view_movements') },
     { key: 'opening', label: 'Opening stock', allowed: can('record_opening_stock') },
     { key: 'trends', label: 'Trends', allowed: can('view_trends') },
     { key: 'value', label: 'Stock value', allowed: can('view_costs') },
     { key: 'items', label: 'Items', allowed: can('manage_items') || can('edit_standard_cost') },
     { key: 'specs', label: 'Spec lists', allowed: can('manage_items') },
+    { key: 'import', label: 'Import', allowed: can('manage_items') },
+    { key: 'minimums', label: 'Minimum levels', allowed: can('view_stock') || can('manage_items') },
     { key: 'locations', label: 'Locations', allowed: can('manage_locations') || user.isOwner },
     { key: 'settings', label: 'Settings', allowed: can('manage_settings') },
   ];
   const firstAllowed = nav.find((n) => n.allowed)?.key;
   const section = route.path[0] ?? firstAllowed ?? '';
   const allowed = (key: string) => nav.find((n) => n.key === key)?.allowed ?? false;
-  const activeTab = section === 'item' ? 'stock' : section === 'bobbin' ? 'bobbins' : section;
+  const activeTab = section === 'item' ? 'stock' : section === 'bundle' ? 'bundles' : section === 'challan' ? 'challans' : section;
 
   let page;
   if (!ready) page = <Loading />;
@@ -130,11 +146,11 @@ function InventoryApp({ user }: { user: SessionUser }) {
       case 'item':
         page = <ItemPage session={session} itemId={route.path[1]} focusLocation={route.query.get('location')} />;
         break;
-      case 'bobbins':
-        page = allowed('bobbins') ? <BobbinsPage session={session} query={route.query} /> : <NoAccess />;
+      case 'bundles':
+        page = allowed('bundles') ? <BundlesPage session={session} query={route.query} /> : <NoAccess />;
         break;
-      case 'bobbin':
-        page = can('view_bobbins') ? <BobbinPage session={session} bobbinId={route.path[1]} /> : <NoAccess />;
+      case 'bundle':
+        page = can('view_bundles') ? <BundlePage session={session} bundleId={route.path[1]} /> : <NoAccess />;
         break;
       case 'movements':
         page = allowed('movements') ? <MovementsPage session={session} movementId={route.path[1]} query={route.query} /> : <NoAccess />;
@@ -144,6 +160,18 @@ function InventoryApp({ user }: { user: SessionUser }) {
         break;
       case 'transfer':
         page = allowed('transfer') ? <TransferPage session={session} query={route.query} /> : <NoAccess />;
+        break;
+      case 'challans':
+        page = allowed('challans') ? <ChallansPage session={session} /> : <NoAccess />;
+        break;
+      case 'challan':
+        page = allowed('challans') ? <ChallanPage challanId={route.path[1]} autoPrint={route.query.get('print') === '1'} /> : <NoAccess />;
+        break;
+      case 'import':
+        page = allowed('import') ? <ImportPage session={session} /> : <NoAccess />;
+        break;
+      case 'minimums':
+        page = allowed('minimums') ? <MinimumsPage session={session} focus={route.query.get('group')} /> : <NoAccess />;
         break;
       case 'opening':
         page = allowed('opening') ? <OpeningPage session={session} /> : <NoAccess />;

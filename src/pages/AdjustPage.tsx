@@ -1,14 +1,13 @@
 import { useState, type FormEvent } from 'react';
-import { adjustStock, type Bobbin } from '../api';
-import { Banner, BobbinSelect, LocationSelect, QuantityInput } from '../components/Common';
+import { adjustStock, type Bundle } from '../api';
+import { Banner, BundleSelect, LocationSelect, QuantityInput } from '../components/Common';
 import ItemPicker from '../components/ItemPicker';
 import { formatQty, formatSigned, todayKarachi } from '../format';
 import { useAction } from '../hooks';
 import { href } from '../router';
 import { itemById, locationName, type Session } from '../session';
-import { conversionHint, toBase } from '../units';
+import { conversionHint, defaultUnit, toBase } from '../units';
 
-const REASONS = ['Count correction', 'Damaged', 'Sample given', 'Found in stock count', 'Theft / loss'];
 
 /** Stock count correction at one of the person's own locations. */
 function AdjustPage({ session, query }: { session: Session; query: URLSearchParams }) {
@@ -21,7 +20,7 @@ function AdjustPage({ session, query }: { session: Session; query: URLSearchPara
   const [direction, setDirection] = useState<'add' | 'remove'>('remove');
   const [amount, setAmount] = useState('');
   const [unit, setUnit] = useState('');
-  const [bobbin, setBobbin] = useState<Bobbin | undefined>();
+  const [bundle, setBundle] = useState<Bundle | undefined>();
   const [reason, setReason] = useState('');
   const [note, setNote] = useState('');
   const [date, setDate] = useState(todayKarachi());
@@ -30,21 +29,22 @@ function AdjustPage({ session, query }: { session: Session; query: URLSearchPara
 
   const item = itemById(session, itemId);
   const isCable = item?.category === 'finished_cable';
-  const activeUnit = unit || item?.base_unit || '';
+  const activeUnit = unit || defaultUnit(item);
+  const reasons = session.adjustmentReasons.length ? session.adjustmentReasons : ['Count correction', 'Damaged', 'Discarded'];
   const base = toBase(item, amount, activeUnit);
 
   const chooseItem = (id: string) => {
     setItemId(id);
     setUnit('');
-    setBobbin(undefined);
+    setBundle(undefined);
     action.clear();
   };
 
   let problem: string | null = null;
   if (base !== null && base <= 0) problem = 'Enter an amount greater than 0.';
-  else if (isCable && direction === 'remove' && !bobbin) problem = 'Choose the bobbin to reduce.';
-  else if (isCable && direction === 'remove' && bobbin && base !== null && base > bobbin.remaining_ft)
-    problem = `Bobbin ${bobbin.bobbin_no} only has ${formatQty(bobbin.remaining_ft, 'ft')}.`;
+  else if (isCable && direction === 'remove' && !bundle) problem = 'Choose the bundle to reduce.';
+  else if (isCable && direction === 'remove' && bundle && base !== null && base > bundle.remaining_ft)
+    problem = `Bundle ${bundle.bundle_no} only has ${formatQty(bundle.remaining_ft, 'ft')}.`;
 
   const ready = item && locationId && base !== null && base > 0 && reason.trim() && !problem;
 
@@ -59,17 +59,17 @@ function AdjustPage({ session, query }: { session: Session; query: URLSearchPara
         quantity: signed,
         reason: reason.trim(),
         note: note.trim() || null,
-        bobbinId: isCable ? (bobbin?.bobbin_id ?? null) : null,
+        bundleId: isCable ? (bundle?.bundle_id ?? null) : null,
         date: date === todayKarachi() ? null : date,
       });
       return `Adjusted ${item.name} at ${locationName(session, locationId)} by ${formatSigned(signed, item.base_unit)}${
-        isCable && direction === 'add' && !bobbin ? ' (new bobbin created, cost pending)' : ''
+        isCable && direction === 'add' && !bundle ? ' (new bundle created, cost pending)' : ''
       }.`;
     });
     if (ok) {
       setAmount('');
       setNote('');
-      setBobbin(undefined);
+      setBundle(undefined);
       setRefresh((r) => r + 1);
     }
   };
@@ -105,7 +105,7 @@ function AdjustPage({ session, query }: { session: Session; query: URLSearchPara
                 value={locationId}
                 onChange={(id) => {
                   setLocationId(id);
-                  setBobbin(undefined);
+                  setBundle(undefined);
                 }}
               />
             </div>
@@ -120,20 +120,20 @@ function AdjustPage({ session, query }: { session: Session; query: URLSearchPara
             </div>
             {isCable && (
               <div className="field span-2">
-                <label htmlFor="adj-bobbin">Bobbin</label>
-                <BobbinSelect
-                  id="adj-bobbin"
+                <label htmlFor="adj-bundle">Bundle</label>
+                <BundleSelect
+                  id="adj-bundle"
                   itemId={itemId}
                   locationId={locationId}
-                  value={bobbin?.bobbin_id ?? ''}
-                  onChange={setBobbin}
+                  value={bundle?.bundle_id ?? ''}
+                  onChange={setBundle}
                   refreshKey={refresh}
-                  emptyLabel={direction === 'add' ? 'New bobbin (found cable)' : 'Choose a bobbin'}
+                  emptyLabel={direction === 'add' ? 'New bundle (found cable)' : 'Choose a bundle'}
                 />
                 <div className="hint">
                   {direction === 'add'
-                    ? 'Leave empty to record found cable as a new bobbin, or choose the bobbin it belongs to.'
-                    : 'Cable is reduced on a specific bobbin.'}
+                    ? 'Leave empty to record found cable as a new bundle, or choose the bundle it belongs to.'
+                    : 'Cable is reduced on a specific bundle.'}
                 </div>
               </div>
             )}
@@ -148,9 +148,9 @@ function AdjustPage({ session, query }: { session: Session; query: URLSearchPara
             </div>
             <div className="field">
               <label htmlFor="adj-reason">Reason (required)</label>
-              <input id="adj-reason" list="adj-reasons" value={reason} onChange={(e) => setReason(e.target.value)} placeholder="e.g. Count correction" />
+              <input id="adj-reason" list="adj-reasons" value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Choose or type, e.g. Discarded" />
               <datalist id="adj-reasons">
-                {REASONS.map((r) => (
+                {reasons.map((r) => (
                   <option key={r} value={r} />
                 ))}
               </datalist>

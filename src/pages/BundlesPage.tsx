@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { listBobbins } from '../api';
+import { listBundles } from '../api';
 import { Banner, Empty, Loading, LocationSelect } from '../components/Common';
 import ItemPicker from '../components/ItemPicker';
 import { formatDate, formatQty } from '../format';
@@ -7,21 +7,21 @@ import { useAsync } from '../hooks';
 import { go } from '../router';
 import type { Session } from '../session';
 
-/** Bobbin list per location: number, cable, remaining / original, order, opened. */
-function BobbinsPage({ session, query }: { session: Session; query: URLSearchParams }) {
+/** Bundle list per location: number, cable, remaining / original, order, opened. */
+function BundlesPage({ session, query }: { session: Session; query: URLSearchParams }) {
   const [locationId, setLocationId] = useState(query.get('location') ?? '');
   const [itemId, setItemId] = useState(query.get('item') ?? '');
   const [includeEmpty, setIncludeEmpty] = useState(false);
   const [search, setSearch] = useState('');
 
   const { data, error, loading, reload } = useAsync(
-    () => listBobbins(itemId || null, locationId || null, includeEmpty),
+    () => listBundles(itemId || null, locationId || null, includeEmpty),
     [itemId, locationId, includeEmpty],
   );
 
   const rows = useMemo(() => {
     const s = search.trim().toLowerCase();
-    return (data ?? []).filter((b) => !s || b.bobbin_no.toLowerCase().includes(s));
+    return (data ?? []).filter((b) => !s || b.bundle_no.toLowerCase().includes(s));
   }, [data, search]);
   const totalFt = rows.reduce((t, b) => t + b.remaining_ft, 0);
 
@@ -29,8 +29,8 @@ function BobbinsPage({ session, query }: { session: Session; query: URLSearchPar
     <>
       <div className="page-head">
         <div>
-          <h1 className="page-title">Bobbins</h1>
-          <p className="page-sub">Every bobbin of finished cable, in the order sales pick them: opened first, then oldest.</p>
+          <h1 className="page-title">Bundles</h1>
+          <p className="page-sub">Every bundle of finished cable, in the order sales pick them: opened first, then oldest.</p>
         </div>
         <button type="button" className="btn btn-secondary" onClick={reload}>
           Refresh
@@ -42,7 +42,7 @@ function BobbinsPage({ session, query }: { session: Session; query: URLSearchPar
           <div className="grow">
             <ItemPicker items={session.items} value={itemId} onChange={setItemId} categories={['finished_cable']} placeholder="All cables" />
           </div>
-          <input type="search" placeholder="Bobbin number" value={search} onChange={(e) => setSearch(e.target.value)} aria-label="Bobbin number" />
+          <input type="search" placeholder="Bundle number" value={search} onChange={(e) => setSearch(e.target.value)} aria-label="Bundle number" />
           <label className="checkbox">
             <input type="checkbox" checked={includeEmpty} onChange={(e) => setIncludeEmpty(e.target.checked)} />
             Include empty
@@ -59,13 +59,13 @@ function BobbinsPage({ session, query }: { session: Session; query: URLSearchPar
         {loading && !data ? (
           <Loading />
         ) : rows.length === 0 ? (
-          <Empty>No bobbins match.</Empty>
+          <Empty>No bundles match.</Empty>
         ) : (
           <div className="table-scroll">
             <table>
               <thead>
                 <tr>
-                  <th>Bobbin</th>
+                  <th>Bundle</th>
                   <th>Cable</th>
                   <th>Location</th>
                   <th className="num">Remaining</th>
@@ -77,8 +77,8 @@ function BobbinsPage({ session, query }: { session: Session; query: URLSearchPar
               </thead>
               <tbody>
                 {rows.map((b) => (
-                  <tr key={b.bobbin_id} className="clickable" onClick={() => go(`bobbin/${b.bobbin_id}`)}>
-                    <td className="mono">{b.bobbin_no}</td>
+                  <tr key={b.bundle_id} className="clickable" onClick={() => go(`bundle/${b.bundle_id}`)}>
+                    <td className="mono">{b.bundle_no}</td>
                     <td className="wrap">{b.item_name}</td>
                     <td>{b.location_name}</td>
                     <td className="mono num">{formatQty(b.remaining_ft, 'ft')}</td>
@@ -102,7 +102,7 @@ function BobbinsPage({ session, query }: { session: Session; query: URLSearchPar
         )}
         {rows.length > 0 && (
           <p className="table-note">
-            {rows.length} bobbins · {formatQty(totalFt, 'ft')} in total
+            {rows.length} bundles · {formatQty(totalFt, 'ft')} in total
           </p>
         )}
       </div>
@@ -110,4 +110,4 @@ function BobbinsPage({ session, query }: { session: Session; query: URLSearchPar
   );
 }
 
-export default BobbinsPage;
+export default BundlesPage;

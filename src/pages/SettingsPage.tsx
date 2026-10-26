@@ -1,11 +1,12 @@
 import { useState, type FormEvent } from 'react';
 import { getSettings, updateSettings, type Settings } from '../api';
 import { Banner, Loading } from '../components/Common';
+import { FT_PER_M, getLengthUnit, M_PER_FT } from '../format';
 import { useAction, useAsync } from '../hooks';
 
 const FIELDS: { key: keyof Settings; label: string; unit: string }[] = [
   { key: 'large_adjustment_threshold_kg', label: 'Copper, PVC and other kg items', unit: 'kg' },
-  { key: 'large_adjustment_threshold_ft', label: 'Finished cable', unit: 'ft' },
+  { key: 'large_adjustment_threshold_ft', label: 'Finished cable', unit: 'ft' }, // shown in m for metre people
   { key: 'large_adjustment_threshold_m', label: 'Rope and other metre items', unit: 'm' },
   { key: 'large_adjustment_threshold_pcs', label: 'Items counted in pieces', unit: 'pcs' },
 ];
@@ -17,7 +18,7 @@ function SettingsPage() {
     <>
       <h1 className="page-title">Settings</h1>
       <p className="page-sub">
-        A stock adjustment bigger than these amounts shows on the Portal overview as "Large adjustment" for review.
+        Large-adjustment alert thresholds, and the reasons offered when adjusting stock.
       </p>
       <div className="card">
         <Banner kind="error">{error}</Banner>
@@ -28,16 +29,28 @@ function SettingsPage() {
 }
 
 function SettingsForm({ initial }: { initial: Settings }) {
-  const [values, setValues] = useState<Record<string, string>>(() =>
-    Object.fromEntries(Object.entries(initial).map(([k, v]) => [k, String(v)])),
-  );
+  const metres = getLengthUnit() === 'm';
+  const [values, setValues] = useState<Record<string, string>>(() => {
+    const v = Object.fromEntries(
+      Object.entries(initial)
+        .filter(([k]) => k !== 'adjustment_reasons')
+        .map(([k, x]) => [k, String(x)]),
+    );
+    if (metres) v.large_adjustment_threshold_ft = String(Math.round(initial.large_adjustment_threshold_ft * M_PER_FT * 1000) / 1000);
+    return v;
+  });
+  const [reasons, setReasons] = useState(initial.adjustment_reasons.join('\n'));
   const action = useAction();
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();
     await action.run(async () => {
-      const parsed = Object.fromEntries(Object.entries(values).map(([k, v]) => [k, Number(v)])) as unknown as Settings;
-      if (Object.values(parsed).some((v) => !Number.isFinite(v) || v < 0)) throw new Error('Every value must be 0 or more.');
+      const numbers = Object.fromEntries(Object.entries(values).map(([k, v]) => [k, Number(v)]));
+      if (Object.values(numbers).some((v) => !Number.isFinite(v) || v < 0)) throw new Error('Every value must be 0 or more.');
+      if (metres) numbers.large_adjustment_threshold_ft = Math.round(numbers.large_adjustment_threshold_ft * FT_PER_M * 1000) / 1000;
+      const list = reasons.split('\n').map((r) => r.trim()).filter(Boolean);
+      if (list.length === 0) throw new Error('Keep at least one adjustment reason.');
+      const parsed = { ...numbers, adjustment_reasons: list } as unknown as Settings;
       if (parsed.large_adjustment_window_days < 1 || parsed.large_adjustment_window_days > 365)
         throw new Error('The review window must be between 1 and 365 days.');
       await updateSettings(parsed);
@@ -63,7 +76,7 @@ function SettingsForm({ initial }: { initial: Settings }) {
                   value={values[f.key] ?? ''}
                   onChange={(e) => setValues({ ...values, [f.key]: e.target.value })}
                 />
-                <span className="unit-label">{f.unit}</span>
+                <span className="unit-label">{f.unit === 'ft' && metres ? 'm' : f.unit}</span>
               </div>
             </div>
           ))}
@@ -78,6 +91,11 @@ function SettingsForm({ initial }: { initial: Settings }) {
               onChange={(e) => setValues({ ...values, large_adjustment_window_days: e.target.value })}
             />
           </div>
+        </div>
+        <div className="field reasons-field">
+          <label htmlFor="set-reasons">Adjustment reasons (one per line)</label>
+          <textarea id="set-reasons" rows={7} value={reasons} onChange={(e) => setReasons(e.target.value)} />
+          <div className="hint">Offered on the Adjust page; people can still type another reason. Use "Discarded" for scrap thrown away.</div>
         </div>
         <button type="submit" className="btn btn-primary" disabled={action.busy}>
           {action.busy ? 'Saving…' : 'Save settings'}

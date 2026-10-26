@@ -1,0 +1,65 @@
+.import-input,
+.import-batches {
+  margin-bottom: 22px;
+}
+.import-batches {
+  margin-top: 22px;
+}
+.import-grid {
+  font-size: 13px;
+}
+.import-grid td {
+  padding: 6px 6px;
+  vertical-align: middle;
+}
+.import-grid th {
+  padding: 8px 6px;
+}
+.import-grid select {
+  height: 30px;
+  font-family: inherit;
+  font-size: 13px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: #fff;
+  color: var(--ink);
+  padding: 0 4px;
+}
+.import-grid .cell-input.tiny {
+  width: 56px;
+}
+.import-grid .cell-input.wide {
+  max-width: none;
+  min-width: 260px;
+}
+.import-grid .missing {
+  border-color: var(--amber);
+  background: var(--amber-light);
+}
+.import-name {
+  min-width: 200px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+.import-flags {
+  min-width: 160px;
+}
+.import-flags .tag {
+  display: inline-block;
+  margin: 2px 4px 2px 0;
+}
+tr.muted-row td {
+  color: var(--muted);
+  background: var(--bg);
+}
+tr.attention-row td {
+  background: var(--amber-light);
+}
+.bulk {
+  flex: 3 1 360px;
+  align-items: center;
+}
+.bulk select {
+  width: auto;
+  height: 32px;
+}

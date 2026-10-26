@@ -1,4 +1,4 @@
-import { bobbinChildren, bobbinHistory, getBobbin } from '../api';
+import { bundleChildren, bundleHistory, getBundle } from '../api';
 import { Banner, Empty, Loading } from '../components/Common';
 import { formatDate, formatDateTime, formatQty, formatSigned, MOVEMENT_LABELS } from '../format';
 import { useAsync } from '../hooks';
@@ -10,7 +10,7 @@ const SOURCE_LABELS: Record<string, string> = {
   purchase: 'Purchased',
   opening: 'Opening stock',
   return: 'Customer return',
-  cut: 'Cut from another bobbin',
+  cut: 'Cut from another bundle',
   adjustment: 'Found in a stock count',
 };
 
@@ -29,24 +29,24 @@ function sourceText(sourceType: string): string {
   return map[sourceType] ?? sourceType.replace(/_/g, ' ');
 }
 
-/** One bobbin: its facts, the pieces cut from it, and every movement (produced, moved, cut, sold, returned). */
-function BobbinPage({ session, bobbinId }: { session: Session; bobbinId: string | undefined }) {
+/** One bundle: its facts, the pieces cut from it, and every movement (produced, moved, cut, sold, returned). */
+function BundlePage({ session, bundleId }: { session: Session; bundleId: string | undefined }) {
   const { data, error, loading } = useAsync(async () => {
-    if (!bobbinId) return null;
-    const [bobbin, children, history] = await Promise.all([getBobbin(bobbinId), bobbinChildren(bobbinId), bobbinHistory(bobbinId)]);
-    const parent = bobbin?.parent_bobbin_id ? await getBobbin(bobbin.parent_bobbin_id) : null;
-    return { bobbin, children, history, parent };
-  }, [bobbinId]);
+    if (!bundleId) return null;
+    const [bundle, children, history] = await Promise.all([getBundle(bundleId), bundleChildren(bundleId), bundleHistory(bundleId)]);
+    const parent = bundle?.parent_bundle_id ? await getBundle(bundle.parent_bundle_id) : null;
+    return { bundle, children, history, parent };
+  }, [bundleId]);
 
   if (loading && !data) return <Loading />;
   if (error) return <Banner kind="error">{error}</Banner>;
-  const b = data?.bobbin;
+  const b = data?.bundle;
   if (!b) {
     return (
       <div className="card">
-        <h1 className="page-title">Bobbin not found</h1>
+        <h1 className="page-title">Bundle not found</h1>
         <p className="page-sub">
-          <a href={href('bobbins')}>Back to bobbins</a>
+          <a href={href('bundles')}>Back to bundles</a>
         </p>
       </div>
     );
@@ -56,9 +56,9 @@ function BobbinPage({ session, bobbinId }: { session: Session; bobbinId: string 
   return (
     <>
       <p className="sub">
-        <a href={href('bobbins')}>Bobbins</a> / {b.bobbin_no}
+        <a href={href('bundles')}>Bundles</a> / {b.bundle_no}
       </p>
-      <h1 className="page-title mono">{b.bobbin_no}</h1>
+      <h1 className="page-title mono">{b.bundle_no}</h1>
       <p className="page-sub">
         {item ? <a href={href(`item/${item.item_id}`)}>{item.name}</a> : 'Cable'} · at {locationName(session, b.location_id)}
       </p>
@@ -97,10 +97,10 @@ function BobbinPage({ session, bobbinId }: { session: Session; bobbinId: string 
       <div className="stack">
         {(data.parent || data.children.length > 0) && (
           <div className="card">
-            <div className="section-title">Related bobbins</div>
+            <div className="section-title">Related bundles</div>
             {data.parent && (
               <p className="page-sub" style={{ marginBottom: 12 }}>
-                Cut from <a href={href(`bobbin/${data.parent.id}`)}>{data.parent.bobbin_no}</a>
+                Cut from <a href={href(`bundle/${data.parent.id}`)}>{data.parent.bundle_no}</a>
               </p>
             )}
             {data.children.length > 0 && (
@@ -116,8 +116,8 @@ function BobbinPage({ session, bobbinId }: { session: Session; bobbinId: string 
                   </thead>
                   <tbody>
                     {data.children.map((c) => (
-                      <tr key={c.id} className="clickable" onClick={() => go(`bobbin/${c.id}`)}>
-                        <td className="mono">{c.bobbin_no}</td>
+                      <tr key={c.id} className="clickable" onClick={() => go(`bundle/${c.id}`)}>
+                        <td className="mono">{c.bundle_no}</td>
                         <td>{locationName(session, c.location_id)}</td>
                         <td className="mono num">{formatQty(c.remaining_ft, 'ft')}</td>
                         <td className="mono num">{formatQty(c.original_ft, 'ft')}</td>
@@ -131,7 +131,7 @@ function BobbinPage({ session, bobbinId }: { session: Session; bobbinId: string 
         )}
 
         <div className="card">
-          <div className="section-title">History (this bobbin and pieces cut from it)</div>
+          <div className="section-title">History (this bundle and pieces cut from it)</div>
           {data.history.length === 0 ? (
             <Empty>No movements.</Empty>
           ) : (
@@ -140,7 +140,7 @@ function BobbinPage({ session, bobbinId }: { session: Session; bobbinId: string 
                 <thead>
                   <tr>
                     <th>Date</th>
-                    <th>Bobbin</th>
+                    <th>Bundle</th>
                     <th>What happened</th>
                     <th>Location</th>
                     <th className="num">Change</th>
@@ -153,7 +153,7 @@ function BobbinPage({ session, bobbinId }: { session: Session; bobbinId: string 
                   {data.history.map((h) => (
                     <tr key={h.movement_id}>
                       <td className="mono">{formatDate(h.movement_date)}</td>
-                      <td className="mono">{h.bobbin_no}</td>
+                      <td className="mono">{h.bundle_no}</td>
                       <td>{MOVEMENT_LABELS[h.movement_type] ?? h.movement_type}</td>
                       <td>{h.location_name}</td>
                       <td className={`mono num ${h.quantity > 0 ? 'pos' : 'neg'}`}>{formatSigned(h.quantity, 'ft')}</td>
@@ -175,4 +175,4 @@ function BobbinPage({ session, bobbinId }: { session: Session; bobbinId: string 
   );
 }
 
-export default BobbinPage;
+export default BundlePage;

@@ -1,8 +1,8 @@
 import { useState } from 'react';
-import { bobbinNumbers, listMovements, requestReversal, reversedIds, type Movement } from '../api';
+import { bundleNumbers, listMovements, requestReversal, reversedIds, type Movement } from '../api';
 import { Banner, Empty, Loading, LocationSelect } from '../components/Common';
 import ItemPicker from '../components/ItemPicker';
-import { daysAgo, formatDate, formatDateTime, formatQty, formatSigned, MOVEMENT_LABELS, todayKarachi } from '../format';
+import { daysAgo, formatDate, formatDateTime, formatQty, formatQtyIn, formatSigned, MOVEMENT_LABELS, todayKarachi } from '../format';
 import { useAction, useAsync } from '../hooks';
 import { href } from '../router';
 import { itemById, locationName, type Session } from '../session';
@@ -33,8 +33,8 @@ function MovementsPage({ session, movementId, query }: MovementsPageProps) {
     const ids = rows.map((r) => r.id);
     const [reversed, numbers] = await Promise.all([
       reversedIds(ids),
-      session.can('view_bobbins')
-        ? bobbinNumbers([...new Set(rows.map((r) => r.bobbin_id).filter((x): x is string => !!x))])
+      session.can('view_bundles')
+        ? bundleNumbers([...new Set(rows.map((r) => r.bundle_id).filter((x): x is string => !!x))])
         : Promise.resolve({} as Record<string, string>),
     ]);
     return { rows, reversed, numbers };
@@ -124,7 +124,7 @@ function MovementsPage({ session, movementId, query }: MovementsPageProps) {
                   <th>Type</th>
                   <th className="num">Change</th>
                   <th className="num">Balance after</th>
-                  <th>Bobbin</th>
+                  <th>Bundle</th>
                   <th>Reason / note</th>
                   <th>Entered</th>
                   <th />
@@ -151,10 +151,10 @@ function MovementsPage({ session, movementId, query }: MovementsPageProps) {
                         )}
                       </td>
                       <td className={`mono num ${m.quantity > 0 ? 'pos' : 'neg'}`}>{formatSigned(m.quantity, item?.base_unit)}</td>
-                      <td className="mono num">{formatQty(m.balance_after)}</td>
+                      <td className="mono num">{item ? formatQtyIn(m.balance_after, item.base_unit) : formatQty(m.balance_after)}</td>
                       <td className="mono">
-                        {m.bobbin_id && data!.numbers[m.bobbin_id] ? (
-                          <a href={href(`bobbin/${m.bobbin_id}`)}>{data!.numbers[m.bobbin_id]}</a>
+                        {m.bundle_id && data!.numbers[m.bundle_id] ? (
+                          <a href={href(`bundle/${m.bundle_id}`)}>{data!.numbers[m.bundle_id]}</a>
                         ) : (
                           '—'
                         )}

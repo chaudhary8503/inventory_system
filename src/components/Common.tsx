@@ -1,8 +1,9 @@
 import type { ReactNode } from 'react';
-import type { Bobbin, Item, Location } from '../api';
-import { listBobbins } from '../api';
+import type { Bundle, Item, Location } from '../api';
+import { listBundles } from '../api';
 import { formatQty } from '../format';
 import { useAsync } from '../hooks';
+import { unitOptions } from '../units';
 
 export function Banner({ kind, children }: { kind: 'ok' | 'error' | 'info'; children: ReactNode }) {
   if (!children) return null;
@@ -70,7 +71,7 @@ interface QuantityInputProps {
 
 /** Amount plus a unit dropdown (base unit and the item's alternative units). */
 export function QuantityInput({ id, item, amount, unit, onAmount, onUnit, allowNegative, placeholder }: QuantityInputProps) {
-  const units = item?.units ?? [];
+  const units = unitOptions(item);
   return (
     <div className="inline-input">
       <input
@@ -95,38 +96,38 @@ export function QuantityInput({ id, item, amount, unit, onAmount, onUnit, allowN
   );
 }
 
-interface BobbinSelectProps {
+interface BundleSelectProps {
   id?: string;
   itemId: string;
   locationId: string;
   value: string;
-  onChange: (bobbin: Bobbin | undefined) => void;
+  onChange: (bundle: Bundle | undefined) => void;
   /** Bumped by the parent after a save, to reload remaining lengths. */
   refreshKey?: number;
   emptyLabel?: string;
 }
 
-/** Bobbins of one cable at one location, in auto-pick order. */
-export function BobbinSelect({ id, itemId, locationId, value, onChange, refreshKey, emptyLabel }: BobbinSelectProps) {
+/** Bundles of one cable at one location, in auto-pick order. */
+export function BundleSelect({ id, itemId, locationId, value, onChange, refreshKey, emptyLabel }: BundleSelectProps) {
   const { data, loading, error } = useAsync(
-    () => (itemId && locationId ? listBobbins(itemId, locationId) : Promise.resolve([] as Bobbin[])),
+    () => (itemId && locationId ? listBundles(itemId, locationId) : Promise.resolve([] as Bundle[])),
     [itemId, locationId, refreshKey],
   );
-  const bobbins = data ?? [];
+  const bundles = data ?? [];
   return (
     <>
       <select
         id={id}
         value={value}
         disabled={!itemId || !locationId || loading}
-        onChange={(e) => onChange(bobbins.find((b) => b.bobbin_id === e.target.value))}
+        onChange={(e) => onChange(bundles.find((b) => b.bundle_id === e.target.value))}
       >
         <option value="">
-          {loading ? 'Loading bobbins…' : bobbins.length === 0 ? 'No bobbins here' : (emptyLabel ?? 'Choose a bobbin')}
+          {loading ? 'Loading bundles…' : bundles.length === 0 ? 'No bundles here' : (emptyLabel ?? 'Choose a bundle')}
         </option>
-        {bobbins.map((b) => (
-          <option key={b.bobbin_id} value={b.bobbin_id}>
-            {b.bobbin_no} — {formatQty(b.remaining_ft, 'ft')} of {formatQty(b.original_ft, 'ft')}
+        {bundles.map((b) => (
+          <option key={b.bundle_id} value={b.bundle_id}>
+            {b.bundle_no} — {formatQty(b.remaining_ft, 'ft')} of {formatQty(b.original_ft, 'ft')}
             {b.opened ? ' (opened)' : ''}
           </option>
         ))}

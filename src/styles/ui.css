@@ -325,3 +325,36 @@ td.wrap {
 .checkbox.rebuild {
   margin-top: 8px;
 }
+
+/* ---------- transfer lines ---------- */
+.transfer-line {
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 6px;
+  margin-bottom: 18px;
+}
+.transfer-line-head {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+.field-problem {
+  margin: -8px 0 12px;
+  font-size: 13px;
+  color: var(--amber);
+}
+.spacer {
+  height: 8px;
+}
+.card-intro {
+  margin-bottom: 14px;
+}
+.narrow-field {
+  max-width: 360px;
+}
+.invoice-input {
+  margin-top: 8px;
+}
+.reasons-field {
+  max-width: 480px;
+  margin-bottom: 20px;
+}

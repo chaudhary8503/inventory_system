@@ -1,0 +1,143 @@
+.challan-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+/* A4 sheet on screen; the same layout prints. */
+.challan {
+  position: relative;
+  background: #fff;
+  color: #111;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  max-width: 794px; /* A4 width at 96 dpi */
+  min-height: 1000px;
+  margin: 0 auto;
+  padding: 48px 52px;
+  font-size: 14px;
+}
+.challan-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+  padding-bottom: 18px;
+  border-bottom: 2px solid #111;
+}
+.challan-business {
+  font-size: 20px;
+  font-weight: 700;
+}
+.challan-small {
+  font-size: 12.5px;
+  color: #444;
+  margin-top: 2px;
+}
+.challan-title {
+  text-align: right;
+}
+.challan-doc {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+.challan-no {
+  font-size: 22px;
+  font-weight: 600;
+  margin: 4px 0;
+}
+.challan-parties {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  padding: 18px 0;
+  border-bottom: 1px solid #ccc;
+}
+.challan-label {
+  font-size: 11.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #555;
+  margin-bottom: 4px;
+}
+.challan-strong {
+  font-weight: 600;
+}
+.challan-lines {
+  margin-top: 18px;
+  font-size: 14px;
+}
+.challan-lines th {
+  color: #333;
+  border-bottom: 1px solid #111;
+}
+.challan-lines td {
+  white-space: normal;
+  border-bottom: 1px solid #ddd;
+}
+.challan-lines tr.reversed td {
+  text-decoration: line-through;
+  color: #777;
+}
+.challan-note {
+  margin-top: 18px;
+}
+.challan-sign {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 64px;
+  margin-top: 96px;
+  font-size: 13px;
+}
+.challan-line {
+  border-top: 1px solid #111;
+  margin-bottom: 6px;
+}
+.challan-cancelled {
+  position: absolute;
+  top: 40%;
+  left: 0;
+  right: 0;
+  text-align: center;
+  font-size: 72px;
+  font-weight: 800;
+  color: rgba(201, 122, 10, 0.25);
+  transform: rotate(-18deg);
+  pointer-events: none;
+}
+
+@media (max-width: 640px) {
+  .challan {
+    padding: 24px 18px;
+    min-height: 0;
+  }
+  .challan-parties {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media print {
+  @page {
+    size: A4;
+    margin: 14mm;
+  }
+  body {
+    background: #fff;
+  }
+  header:not(.challan-head),
+  .no-print,
+  .challan-toolbar {
+    display: none !important;
+  }
+  .page {
+    padding: 0 !important;
+  }
+  .challan {
+    border: none;
+    border-radius: 0;
+    padding: 0;
+    max-width: none;
+    min-height: 0;
+  }
+}

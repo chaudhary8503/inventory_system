@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { stockValuation, type Category } from '../api';
 import { Banner, Empty, Loading, LocationSelect } from '../components/Common';
-import { CATEGORY_LABELS, formatMoney, formatQty, formatUnitCost } from '../format';
+import { CATEGORY_LABELS, CATEGORY_ORDER, formatMoney, formatQty, formatUnitCost } from '../format';
 import { useAsync } from '../hooks';
 import { href } from '../router';
 import type { Session } from '../session';
@@ -17,7 +17,7 @@ function ValuationPage({ session }: { session: Session }) {
     [data, locationId, category],
   );
   const total = rows.reduce((s, r) => s + r.value, 0);
-  const byCategory = (['copper', 'pvc', 'finished_cable', 'consumable'] as Category[]).map((c) => ({
+  const byCategory = ([...CATEGORY_ORDER] as Category[]).map((c) => ({
     c,
     value: rows.filter((r) => r.category === c).reduce((s, r) => s + r.value, 0),
   }));
@@ -29,7 +29,7 @@ function ValuationPage({ session }: { session: Session }) {
         <div>
           <h1 className="page-title">Stock value</h1>
           <p className="page-sub">
-            Raw materials at weighted average cost. Cable per bobbin: the production order's cost, or the item's standard
+            Raw materials at weighted average cost. Cable per bundle: the production order's cost, or the item's standard
             cost while the order isn't finalized.
           </p>
         </div>

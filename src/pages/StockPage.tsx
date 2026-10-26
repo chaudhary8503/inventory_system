@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { balances, stockAvailability, type Category } from '../api';
 import { Banner, Empty, Loading } from '../components/Common';
-import { CATEGORY_LABELS, formatQty } from '../format';
+import { CATEGORY_LABELS, formatQty, formatQtyIn } from '../format';
 import { useAsync } from '../hooks';
 import { go } from '../router';
 import type { Session } from '../session';
@@ -62,7 +62,7 @@ function StockPage({ session }: { session: Session }) {
       <div className="page-head">
         <div>
           <h1 className="page-title">Stock on hand</h1>
-          <p className="page-sub">Every item at every location. Click an item for its bobbins, history and reorder levels.</p>
+          <p className="page-sub">Every item at every location. Click an item for its bundles, history and reorder levels.</p>
         </div>
         <button type="button" className="btn btn-secondary" onClick={reload}>
           Refresh
@@ -128,7 +128,7 @@ function StockPage({ session }: { session: Session }) {
                         className={`mono num ${c.level === 'low' || c.level === 'out' ? 'qty-low' : c.qty === 0 ? 'qty-zero' : ''}`}
                         title={c.level === 'out' ? 'Out of stock' : c.level === 'low' ? 'At or below reorder level' : undefined}
                       >
-                        {formatQty(c.qty)}
+                        {formatQtyIn(c.qty, r.item.base_unit)}
                       </td>
                     ))}
                     <td className="mono num">{formatQty(r.total, r.item.base_unit)}</td>

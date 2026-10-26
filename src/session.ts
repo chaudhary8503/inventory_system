@@ -13,6 +13,10 @@ export interface Session {
   /** Location ids this person may change stock at (all, for the owner). */
   stockLocationIds: string[];
   reloadCatalog: () => Promise<void>;
+  /** The person's own feet / metres setting (lengths are always stored in feet). */
+  lengthUnit: 'ft' | 'm';
+  /** Editable list of adjustment reasons (Settings). */
+  adjustmentReasons: string[];
 }
 
 export function makeCan(user: SessionUser): (permission: string) => boolean {

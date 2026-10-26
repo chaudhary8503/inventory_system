@@ -2,10 +2,10 @@ import { useState, type FormEvent } from 'react';
 import { recordOpening } from '../api';
 import { Banner, LocationSelect, QuantityInput } from '../components/Common';
 import ItemPicker from '../components/ItemPicker';
-import { formatQty, todayKarachi } from '../format';
+import { formatQty, FT_PER_M, getLengthUnit, todayKarachi } from '../format';
 import { useAction } from '../hooks';
 import { itemById, locationName, type Session } from '../session';
-import { conversionHint, parseLengths, toBase } from '../units';
+import { conversionHint, defaultUnit, parseLengths, toBase } from '../units';
 
 /**
  * Opening stock on the cut-over date, one item and location at a time.
@@ -24,15 +24,18 @@ function OpeningPage({ session }: { session: Session }) {
   const action = useAction();
 
   const item = itemById(session, itemId);
+  const lengthUnit = getLengthUnit();
   const isCable = item?.category === 'finished_cable';
-  const activeUnit = unit || item?.base_unit || '';
+  const activeUnit = unit || defaultUnit(item);
   const base = toBase(item, amount, activeUnit);
-  const parsed = isCable ? parseLengths(lengths) : null;
+  // Bundle lengths are typed in the person's unit (ft or m) and stored in feet.
+  const typed = isCable ? parseLengths(lengths) : null;
+  const parsed = typed && lengthUnit === 'm' ? typed.map((v) => Math.round(v * FT_PER_M * 1000) / 1000) : typed;
   const cableTotal = parsed?.reduce((s, v) => s + v, 0) ?? 0;
   const costValue = cost.trim() === '' ? null : Number(cost);
 
   let problem: string | null = null;
-  if (isCable && lengths.trim() && !parsed) problem = 'Bobbin lengths must be numbers greater than 0, separated by commas or new lines.';
+  if (isCable && lengths.trim() && !parsed) problem = 'Bundle lengths must be numbers greater than 0, separated by commas or new lines.';
   if (!isCable && base !== null && base <= 0) problem = 'Enter an amount greater than 0.';
   if (costValue !== null && (!Number.isFinite(costValue) || costValue < 0)) problem = 'Cost must be 0 or more.';
 
@@ -49,12 +52,12 @@ function OpeningPage({ session }: { session: Session }) {
         unitCost: costValue,
         date,
         note: note.trim() || null,
-        bobbins: isCable ? parsed!.map((l) => ({ length_ft: l })) : null,
+        bundles: isCable ? parsed!.map((l) => ({ length_ft: l })) : null,
       });
       const where = locationName(session, locationId);
       return isCable
-        ? `Opening stock recorded: ${rows.length} bobbin${rows.length === 1 ? '' : 's'} (${rows
-            .map((r) => r.bobbin_no)
+        ? `Opening stock recorded: ${rows.length} bundle${rows.length === 1 ? '' : 's'} (${rows
+            .map((r) => r.bundle_no)
             .join(', ')}) of ${item.name} at ${where}.`
         : `Opening stock recorded: ${formatQty(base, item.base_unit)} of ${item.name} at ${where}.`;
     });
@@ -110,15 +113,15 @@ function OpeningPage({ session }: { session: Session }) {
             </div>
             {isCable ? (
               <div className="field span-2">
-                <label htmlFor="op-lengths">Bobbin lengths in feet (one bobbin each)</label>
+                <label htmlFor="op-lengths">Bundle lengths in {lengthUnit === 'm' ? 'metres' : 'feet'} (one bundle each)</label>
                 <textarea
                   id="op-lengths"
                   value={lengths}
                   onChange={(e) => setLengths(e.target.value)}
-                  placeholder={'e.g. 1000, 800, 1200\nIf the bobbins are unknown, enter the total as one length.'}
+                  placeholder={'e.g. 1000, 800, 1200\nIf the bundles are unknown, enter the total as one length.'}
                 />
                 <div className="hint">
-                  {parsed ? `${parsed.length} bobbin${parsed.length === 1 ? '' : 's'}, ${formatQty(cableTotal, 'ft')} in total` : ''}
+                  {parsed ? `${parsed.length} bundle${parsed.length === 1 ? '' : 's'}, ${formatQty(cableTotal, 'ft')} in total` : ''}
                 </div>
               </div>
             ) : (
@@ -133,7 +136,7 @@ function OpeningPage({ session }: { session: Session }) {
               <input id="op-cost" type="number" min={0} step="any" value={cost} onChange={(e) => setCost(e.target.value)} />
               <div className="hint">
                 {isCable
-                  ? 'Leave blank if unknown: the bobbins are valued at the standard cost until set.'
+                  ? 'Leave blank if unknown: the bundles are valued at the standard cost until set.'
                   : 'Starts the weighted average cost. Leave blank to keep the current average.'}
               </div>
             </div>

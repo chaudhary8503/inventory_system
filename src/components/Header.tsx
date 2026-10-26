@@ -24,7 +24,7 @@ function Header({ session, nav, active }: HeaderProps) {
           <img className="brand-mark" src="/powerant-logo.jpg" alt="Powerant" />
           <div>
             <div className="brand-name">Inventory</div>
-            <div className="brand-sub">Stock, bobbins and movements</div>
+            <div className="brand-sub">Stock, bundles and movements</div>
           </div>
         </a>
         <div className="header-user">

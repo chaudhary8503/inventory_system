@@ -7,21 +7,41 @@ import { errorMessage, supabase } from './lib/supabase';
 
 const inv = () => supabase.schema('inventory');
 
-export type Category = 'copper' | 'pvc' | 'finished_cable' | 'consumable';
-export type BaseUnit = 'kg' | 'ft' | 'pcs' | 'm';
+export type Category = 'copper' | 'pvc' | 'semi_finished' | 'finished_cable' | 'consumable' | 'scrap' | 'other';
+export type BaseUnit = 'kg' | 'ft' | 'pcs' | 'm' | 'roll';
 
 export interface UnitOption {
   unit: string;
   factor_to_base: number;
 }
 
+export interface ItemSpecValues {
+  material?: string;
+  size_mm2?: string;
+  cores?: string;
+  flex_standard?: string;
+  cable_type?: string;
+  double_pvc?: boolean;
+  wires?: string;
+  thou?: string;
+  copper_grade?: string;
+  form?: string;
+  pvc_colour?: string;
+  pvc_grade?: string;
+}
+
 export interface Item {
   item_id: string;
   code: string | null;
   name: string;
+  invoice_name: string | null;
   category: Category;
   base_unit: BaseUnit;
   units: UnitOption[];
+  specs: ItemSpecValues;
+  source: 'made' | 'bought' | 'both' | null;
+  standard_cost_set: boolean;
+  manager_key: string | null;
   active: boolean;
 }
 
@@ -53,9 +73,9 @@ export interface Balance {
   reorder_level: number | null;
 }
 
-export interface Bobbin {
-  bobbin_id: string;
-  bobbin_no: string;
+export interface Bundle {
+  bundle_id: string;
+  bundle_no: string;
   item_id: string;
   item_name: string;
   location_id: string;
@@ -64,29 +84,29 @@ export interface Bobbin {
   original_ft: number;
   opened: boolean;
   production_order_id: string | null;
-  parent_bobbin_id: string | null;
+  parent_bundle_id: string | null;
   created_at: string;
 }
 
-export interface BobbinRecord {
+export interface BundleRecord {
   id: string;
-  bobbin_no: string;
+  bundle_no: string;
   item_id: string;
   location_id: string;
   production_order_id: string | null;
   source_type: string;
   source_id: string | null;
-  parent_bobbin_id: string | null;
+  parent_bundle_id: string | null;
   original_ft: number;
   remaining_ft: number;
   cost_status: 'pending' | 'final';
   created_at: string;
 }
 
-export interface BobbinHistoryRow {
+export interface BundleHistoryRow {
   movement_id: string;
-  bobbin_id: string;
-  bobbin_no: string;
+  bundle_id: string;
+  bundle_no: string;
   movement_date: string;
   movement_type: string;
   quantity: number;
@@ -111,7 +131,7 @@ export interface Movement {
   source_id: string | null;
   reverses_movement_id: string | null;
   transfer_id: string | null;
-  bobbin_id: string | null;
+  bundle_id: string | null;
   reason: string | null;
   note: string | null;
   balance_after: number;
@@ -126,15 +146,18 @@ export interface SpecOption {
   active: boolean;
 }
 
-export type SpecType = 'wires' | 'thou' | 'cores' | 'mm2' | 'cable_type' | 'pvc_colour' | 'pvc_grade';
+export type SpecType = 'material' | 'mm2' | 'cores' | 'flex_standard' | 'cable_type' | 'wires' | 'thou' | 'copper_grade' | 'pvc_colour' | 'pvc_grade';
 
 export interface CableSpecs {
   item_id: string;
+  material_option_id: string | null;
+  mm2_option_id: string | null;
+  cores_option_id: string | null;
+  flex_option_id: string | null;
+  cable_type_option_id: string | null;
+  double_pvc: boolean;
   wires_option_id: string | null;
   thou_option_id: string | null;
-  cores_option_id: string | null;
-  mm2_option_id: string | null;
-  type_option_id: string | null;
 }
 export interface PvcSpecs {
   item_id: string;
@@ -144,7 +167,15 @@ export interface PvcSpecs {
 export interface CopperSpecs {
   item_id: string;
   form: 'rod' | 'wire' | null;
+  grade_option_id: string | null;
   thou_option_id: string | null;
+}
+
+export interface ItemDetails {
+  description: string | null;
+  invoice_name_custom: boolean;
+  name_custom: boolean;
+  manager_name: string | null;
 }
 
 export interface ItemCost {
@@ -159,6 +190,7 @@ export interface Settings {
   large_adjustment_threshold_pcs: number;
   large_adjustment_threshold_m: number;
   large_adjustment_window_days: number;
+  adjustment_reasons: string[];
 }
 
 export interface ValuationRow {
@@ -250,44 +282,44 @@ export async function balances(itemId?: string): Promise<Balance[]> {
   return rows.map((r) => ({ ...r, on_hand: num(r.on_hand), reorder_level: numOrNull(r.reorder_level) }));
 }
 
-export async function listBobbins(itemId?: string | null, locationId?: string | null, includeEmpty = false): Promise<Bobbin[]> {
+export async function listBundles(itemId?: string | null, locationId?: string | null, includeEmpty = false): Promise<Bundle[]> {
   const rows = unwrap(
-    await inv().rpc('list_bobbins', {
+    await inv().rpc('list_bundles', {
       p_item_id: itemId ?? null,
       p_location_id: locationId ?? null,
       p_include_empty: includeEmpty,
     }),
-  ) as Bobbin[];
+  ) as Bundle[];
   return rows.map((r) => ({ ...r, remaining_ft: num(r.remaining_ft), original_ft: num(r.original_ft) }));
 }
 
-const BOBBIN_COLUMNS =
-  'id, bobbin_no, item_id, location_id, production_order_id, source_type, source_id, parent_bobbin_id, original_ft, remaining_ft, cost_status, created_at';
+const BUNDLE_COLUMNS =
+  'id, bundle_no, item_id, location_id, production_order_id, source_type, source_id, parent_bundle_id, original_ft, remaining_ft, cost_status, created_at';
 
-export async function getBobbin(id: string): Promise<BobbinRecord | null> {
-  const row = unwrap(await inv().from('bobbins').select(BOBBIN_COLUMNS).eq('id', id).maybeSingle()) as BobbinRecord | null;
+export async function getBundle(id: string): Promise<BundleRecord | null> {
+  const row = unwrap(await inv().from('bundles').select(BUNDLE_COLUMNS).eq('id', id).maybeSingle()) as BundleRecord | null;
   return row && { ...row, original_ft: num(row.original_ft), remaining_ft: num(row.remaining_ft) };
 }
 
-export async function bobbinChildren(id: string): Promise<BobbinRecord[]> {
-  const rows = unwrap(await inv().from('bobbins').select(BOBBIN_COLUMNS).eq('parent_bobbin_id', id).order('bobbin_no')) as BobbinRecord[];
+export async function bundleChildren(id: string): Promise<BundleRecord[]> {
+  const rows = unwrap(await inv().from('bundles').select(BUNDLE_COLUMNS).eq('parent_bundle_id', id).order('bundle_no')) as BundleRecord[];
   return rows.map((r) => ({ ...r, original_ft: num(r.original_ft), remaining_ft: num(r.remaining_ft) }));
 }
 
-export async function bobbinNumbers(ids: string[]): Promise<Record<string, string>> {
+export async function bundleNumbers(ids: string[]): Promise<Record<string, string>> {
   if (ids.length === 0) return {};
-  const rows = unwrap(await inv().from('bobbins').select('id, bobbin_no').in('id', ids)) as { id: string; bobbin_no: string }[];
-  return Object.fromEntries(rows.map((r) => [r.id, r.bobbin_no]));
+  const rows = unwrap(await inv().from('bundles').select('id, bundle_no').in('id', ids)) as { id: string; bundle_no: string }[];
+  return Object.fromEntries(rows.map((r) => [r.id, r.bundle_no]));
 }
 
-export async function bobbinHistory(id: string): Promise<BobbinHistoryRow[]> {
-  const rows = unwrap(await inv().rpc('bobbin_history', { p_bobbin_id: id })) as BobbinHistoryRow[];
+export async function bundleHistory(id: string): Promise<BundleHistoryRow[]> {
+  const rows = unwrap(await inv().rpc('bundle_history', { p_bundle_id: id })) as BundleHistoryRow[];
   return rows.map((r) => ({ ...r, quantity: num(r.quantity) }));
 }
 
 // unit_cost is not granted to browsers, so the columns are always named.
 const MOVEMENT_COLUMNS =
-  'id, item_id, location_id, movement_date, movement_type, quantity, source_type, source_id, reverses_movement_id, transfer_id, bobbin_id, reason, note, balance_after, created_at';
+  'id, item_id, location_id, movement_date, movement_type, quantity, source_type, source_id, reverses_movement_id, transfer_id, bundle_id, reason, note, balance_after, created_at';
 
 export interface MovementFilter {
   id?: string;
@@ -336,9 +368,9 @@ export async function getItemSpecs(itemId: string): Promise<{
   copper: CopperSpecs | null;
 }> {
   const [cable, pvc, copper] = await Promise.all([
-    inv().from('cable_specs').select('item_id, wires_option_id, thou_option_id, cores_option_id, mm2_option_id, type_option_id').eq('item_id', itemId).maybeSingle(),
+    inv().from('cable_specs').select('item_id, material_option_id, mm2_option_id, cores_option_id, flex_option_id, cable_type_option_id, double_pvc, wires_option_id, thou_option_id').eq('item_id', itemId).maybeSingle(),
     inv().from('pvc_specs').select('item_id, colour_option_id, grade_option_id').eq('item_id', itemId).maybeSingle(),
-    inv().from('copper_specs').select('item_id, form, thou_option_id').eq('item_id', itemId).maybeSingle(),
+    inv().from('copper_specs').select('item_id, form, grade_option_id, thou_option_id').eq('item_id', itemId).maybeSingle(),
   ]);
   return {
     cable: unwrap(cable) as CableSpecs | null,
@@ -405,7 +437,7 @@ export async function adjustStock(a: {
   quantity: number;
   reason: string;
   note: string | null;
-  bobbinId: string | null;
+  bundleId: string | null;
   date: string | null;
 }): Promise<string> {
   return unwrap(
@@ -415,32 +447,95 @@ export async function adjustStock(a: {
       p_quantity: a.quantity,
       p_reason: a.reason,
       p_note: a.note,
-      p_bobbin_id: a.bobbinId,
+      p_bundle_id: a.bundleId,
       p_movement_date: a.date,
     }),
   ) as string;
 }
 
-export async function recordTransfer(t: {
-  itemId: string;
+export interface TransferLine {
+  item_id: string;
+  /** Base units (feet for cable); null with a bundle = the whole bundle. */
+  quantity: number | null;
+  bundle_id?: string | null;
+  note?: string | null;
+}
+
+/** One delivery challan with one or more lines. Returns the challan (document) id. */
+export async function recordTransferDocument(t: {
   fromId: string;
   toId: string;
-  quantity: number | null;
+  lines: TransferLine[];
+  vehicleNo: string | null;
+  driverName: string | null;
   note: string | null;
-  bobbinId: string | null;
   date: string | null;
 }): Promise<string> {
   return unwrap(
-    await inv().rpc('record_transfer', {
-      p_item_id: t.itemId,
+    await inv().rpc('record_transfer_document', {
       p_from_location_id: t.fromId,
       p_to_location_id: t.toId,
-      p_quantity: t.quantity,
+      p_lines: t.lines,
+      p_vehicle_no: t.vehicleNo,
+      p_driver_name: t.driverName,
       p_note: t.note,
-      p_bobbin_id: t.bobbinId,
       p_movement_date: t.date,
     }),
   ) as string;
+}
+
+export interface ChallanLine {
+  item_id: string;
+  name: string;
+  invoice_name: string;
+  base_unit: string;
+  quantity: number;
+  coil_ft: number | null;
+  from_bundle: string | null;
+  to_bundle: string | null;
+  reversed: boolean;
+}
+
+export interface Challan {
+  id: string;
+  challan_no: string;
+  date: string;
+  vehicle_no: string | null;
+  driver_name: string | null;
+  note: string | null;
+  created_at: string;
+  created_by: string | null;
+  from: { id: string; name: string; type: string };
+  to: { id: string; name: string; type: string };
+  business: { name: string; legal_name: string; address: string | null; phone: string | null; logo_path: string | null } | null;
+  cancelled: boolean;
+  lines: ChallanLine[];
+}
+
+export async function getChallan(id: string): Promise<Challan> {
+  const c = unwrap(await inv().rpc('get_challan', { p_document_id: id })) as Challan;
+  return {
+    ...c,
+    lines: (c.lines ?? []).map((l) => ({ ...l, quantity: num(l.quantity), coil_ft: numOrNull(l.coil_ft) })),
+  };
+}
+
+export interface ChallanRow {
+  document_id: string;
+  challan_no: string;
+  transfer_date: string;
+  from_location: string;
+  to_location: string;
+  line_count: number;
+  vehicle_no: string | null;
+  cancelled: boolean;
+  created_at: string;
+}
+
+export async function listChallans(from: string | null, to: string | null, locationId: string | null): Promise<ChallanRow[]> {
+  return unwrap(
+    await inv().rpc('list_challans', { p_from: from, p_to: to, p_location_id: locationId }),
+  ) as ChallanRow[];
 }
 
 export async function requestReversal(movementId: string, reason: string): Promise<string> {
@@ -454,8 +549,8 @@ export async function recordOpening(o: {
   unitCost: number | null;
   date: string | null;
   note: string | null;
-  bobbins: { length_ft: number }[] | null;
-}): Promise<{ movement_id: string; bobbin_id: string | null; bobbin_no: string | null }[]> {
+  bundles: { length_ft: number }[] | null;
+}): Promise<{ movement_id: string; bundle_id: string | null; bundle_no: string | null }[]> {
   return unwrap(
     await inv().rpc('record_opening_balance', {
       p_item_id: o.itemId,
@@ -464,9 +559,9 @@ export async function recordOpening(o: {
       p_unit_cost: o.unitCost,
       p_date: o.date,
       p_note: o.note,
-      p_bobbins: o.bobbins,
+      p_bundles: o.bundles,
     }),
-  ) as { movement_id: string; bobbin_id: string | null; bobbin_no: string | null }[];
+  ) as { movement_id: string; bundle_id: string | null; bundle_no: string | null }[];
 }
 
 // ---------------------------------------------------------------- reports
@@ -531,7 +626,7 @@ export async function getSettings(): Promise<Settings | null> {
   const row = unwrap(
     await inv()
       .from('settings')
-      .select('large_adjustment_threshold_kg, large_adjustment_threshold_ft, large_adjustment_threshold_pcs, large_adjustment_threshold_m, large_adjustment_window_days')
+      .select('large_adjustment_threshold_kg, large_adjustment_threshold_ft, large_adjustment_threshold_pcs, large_adjustment_threshold_m, large_adjustment_window_days, adjustment_reasons')
       .maybeSingle(),
   ) as Settings | null;
   if (!row) return null;
@@ -541,9 +636,116 @@ export async function getSettings(): Promise<Settings | null> {
     large_adjustment_threshold_pcs: num(row.large_adjustment_threshold_pcs),
     large_adjustment_threshold_m: num(row.large_adjustment_threshold_m),
     large_adjustment_window_days: num(row.large_adjustment_window_days),
+    adjustment_reasons: row.adjustment_reasons ?? [],
   };
 }
 
 export async function updateSettings(s: Settings): Promise<void> {
   unwrap(await inv().rpc('update_settings', { p_settings: s }));
+}
+
+// ---------------------------------------------------------------- v6: personal setting, item details, import, minimums
+
+/** The person's length unit from the Portal ('ft' or 'm'); feet when the Portal doesn't have it yet. */
+export async function getMyLengthUnit(): Promise<'ft' | 'm'> {
+  try {
+    const res = await supabase.schema('portal').rpc('get_my_settings');
+    const unit = (res.data as { length_unit?: string } | null)?.length_unit;
+    return unit === 'm' ? 'm' : 'ft';
+  } catch {
+    return 'ft';
+  }
+}
+
+export async function getItemDetails(itemId: string): Promise<ItemDetails | null> {
+  return unwrap(
+    await inv().from('items').select('description, invoice_name_custom, name_custom, manager_name').eq('id', itemId).maybeSingle(),
+  ) as ItemDetails | null;
+}
+
+export interface ImportPayloadRow {
+  manager_key: string;
+  manager_name: string;
+  category: string;
+  base_unit?: string;
+  name?: string;
+  description?: string;
+  source?: string;
+  specs?: Record<string, string | boolean>;
+  merge_keys?: { manager_key: string; manager_name: string }[];
+}
+
+export async function importItems(rows: ImportPayloadRow[], sourceName: string | null): Promise<string> {
+  return unwrap(await inv().rpc('import_items', { p_rows: rows, p_source_name: sourceName })) as string;
+}
+
+export async function undoItemImport(batchId: string): Promise<number> {
+  return num(unwrap(await inv().rpc('undo_item_import', { p_batch_id: batchId })));
+}
+
+export interface ImportBatch {
+  id: string;
+  source_name: string | null;
+  item_count: number;
+  created_at: string;
+  undone_at: string | null;
+}
+
+export async function listImportBatches(): Promise<ImportBatch[]> {
+  return unwrap(
+    await inv().from('item_import_batches').select('id, source_name, item_count, created_at, undone_at').order('created_at', { ascending: false }),
+  ) as ImportBatch[];
+}
+
+/** Manager.io keys already linked to items (to flag rows that were imported before). */
+export async function linkedManagerKeys(): Promise<Set<string>> {
+  const rows = unwrap(await inv().from('item_manager_keys').select('manager_key')) as { manager_key: string }[];
+  return new Set(rows.map((r) => r.manager_key));
+}
+
+export interface GroupMinLevel {
+  id: string;
+  name: string;
+  category: Category;
+  base_unit: string;
+  location_id: string | null;
+  filters: Record<string, string | boolean>;
+  min_quantity: number;
+  active: boolean;
+}
+
+export async function listGroupMinLevels(): Promise<GroupMinLevel[]> {
+  const rows = unwrap(
+    await inv().from('group_min_levels').select('id, name, category, base_unit, location_id, filters, min_quantity, active').order('name'),
+  ) as GroupMinLevel[];
+  return rows.map((r) => ({ ...r, min_quantity: num(r.min_quantity) }));
+}
+
+export async function groupMinLevelTotals(): Promise<Map<string, number>> {
+  const rows = unwrap(await inv().rpc('group_min_level_totals')) as { group_id: string; total: number }[];
+  return new Map(rows.map((r) => [r.group_id, num(r.total)]));
+}
+
+export async function saveGroupMinLevel(g: {
+  id: string | null;
+  name: string;
+  category: string;
+  baseUnit: string | null;
+  locationId: string | null;
+  filters: Record<string, string | boolean>;
+  minQuantity: number;
+  active: boolean;
+}): Promise<string> {
+  return unwrap(
+    await inv().rpc('save_group_min_level', {
+      p_id: g.id,
+      p_name: g.name,
+      p_category: g.category,
+      p_base_unit: g.baseUnit,
+      p_location_id: g.locationId,
+      p_filters: g.filters,
+      p_min_quantity: g.minQuantity,
+      p_active: g.active,
+    }),
+  ) as string;
 }

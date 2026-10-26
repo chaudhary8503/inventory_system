@@ -5,11 +5,14 @@ import { useAction, useAsync } from '../hooks';
 import type { Session } from '../session';
 
 const SPEC_TYPES: { type: SpecType; label: string; example: string }[] = [
+  { type: 'material', label: 'Material', example: 'Copper / Silver' },
   { type: 'mm2', label: 'Size (mm²)', example: 'e.g. 2.5' },
-  { type: 'cores', label: 'Cores', example: 'e.g. 3' },
+  { type: 'cores', label: 'Cores', example: 'e.g. 3.5' },
+  { type: 'flex_standard', label: 'Flexible / Standard', example: 'Flexible / Standard' },
+  { type: 'cable_type', label: 'Cable type', example: 'e.g. Armoured' },
   { type: 'wires', label: 'Wires (strands)', example: 'e.g. 7' },
   { type: 'thou', label: 'Thou', example: 'e.g. 29' },
-  { type: 'cable_type', label: 'Cable type', example: 'Flexible / Standard' },
+  { type: 'copper_grade', label: 'Copper grade', example: 'e.g. 99' },
   { type: 'pvc_colour', label: 'PVC colour', example: 'e.g. Red' },
   { type: 'pvc_grade', label: 'PVC grade', example: '1, 2 or 3' },
 ];
@@ -25,7 +28,7 @@ function SpecsPage({ session }: { session: Session }) {
     <>
       <h1 className="page-title">Spec lists</h1>
       <p className="page-sub">
-        The values offered in the item form. Cable names are built from them, e.g. "2.5 mm² · 3-core · 7/29 · Flexible".
+        The values offered in the item form. Cable names are built from them, e.g. "2.5 mm² · 3-core · 7/29 · Flexible"; invoice names leave out wires and thou.
       </p>
       <div className="card">
         <div className="filters" role="tablist" aria-label="Spec list">
