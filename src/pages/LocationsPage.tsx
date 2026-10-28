@@ -2,7 +2,9 @@ import { useState, type FormEvent } from 'react';
 import {
   allUserLocations,
   listAllLocations,
+  businessLabel,
   listBusinesses,
+  type Business,
   listStaff,
   saveLocation,
   setUserLocations,
@@ -23,7 +25,7 @@ function LocationsPage({ session }: { session: Session }) {
   const [locations, businesses] = data.data ?? [[], []];
   const businessName = (id: string) => {
     const b = businesses.find((x) => x.id === id);
-    return b ? (b.trading_name ?? b.legal_name) : '—';
+    return b ? businessLabel(b) : '—';
   };
 
   const afterSave = async () => {
@@ -111,7 +113,7 @@ function LocationForm({
   onSaved,
 }: {
   location: LocationRow | null;
-  businesses: { id: string; legal_name: string; trading_name: string | null }[];
+  businesses: Business[];
   onCancel: () => void;
   onSaved: () => Promise<void>;
 }) {
@@ -162,7 +164,7 @@ function LocationForm({
               <option value="">Choose a business</option>
               {businesses.map((b) => (
                 <option key={b.id} value={b.id}>
-                  {b.trading_name ?? b.legal_name}
+                  {businessLabel(b)}
                 </option>
               ))}
             </select>

@@ -5,6 +5,7 @@ import { canOpenModule, loadSessionUser, signOut, type SessionUser } from './aut
 import { Banner, Loading, NoAccess } from './components/Common';
 import ErrorBoundary from './components/ErrorBoundary';
 import Header, { type NavEntry } from './components/Header';
+import Sidebar from './components/Sidebar';
 import { MODULE, PORTAL_URL } from './config';
 import { supabase } from './lib/supabase';
 import AdjustPage from './pages/AdjustPage';
@@ -15,6 +16,7 @@ import ItemsPage from './pages/ItemsPage';
 import LocationsPage from './pages/LocationsPage';
 import LoginPage from './pages/LoginPage';
 import MovementsPage from './pages/MovementsPage';
+import OpeningImportPage from './pages/OpeningImportPage';
 import OpeningPage from './pages/OpeningPage';
 import SettingsPage from './pages/SettingsPage';
 import SpecsPage from './pages/SpecsPage';
@@ -80,6 +82,7 @@ function InventoryApp({ user }: { user: SessionUser }) {
   const [error, setError] = useState<string | null>(null);
   const [lengthUnit, setUnit] = useState<LengthUnit>('ft');
   const [reasons, setReasons] = useState<string[]>([]);
+  const [menuOpen, setMenuOpen] = useState(false);
 
   const reloadCatalog = useCallback(async () => {
     try {
@@ -113,22 +116,23 @@ function InventoryApp({ user }: { user: SessionUser }) {
 
   const session: Session = { user, can, items, locations, stockLocationIds, reloadCatalog, lengthUnit, adjustmentReasons: reasons };
 
+  // Grouped for the sidebar; entries in the same group must stay next to each other.
   const nav: NavEntry[] = [
-    { key: 'stock', label: 'Stock', allowed: can('view_stock') },
-    { key: 'bundles', label: 'Bundles', allowed: can('view_bundles') },
-    { key: 'movements', label: 'Movements', allowed: can('view_movements') },
-    { key: 'adjust', label: 'Adjust', allowed: can('adjust_stock') },
-    { key: 'transfer', label: 'Transfer', allowed: can('record_transfer') },
-    { key: 'challans', label: 'Challans', allowed: can('record_transfer') || can('view_movements') },
-    { key: 'opening', label: 'Opening stock', allowed: can('record_opening_stock') },
-    { key: 'trends', label: 'Trends', allowed: can('view_trends') },
-    { key: 'value', label: 'Stock value', allowed: can('view_costs') },
-    { key: 'items', label: 'Items', allowed: can('manage_items') || can('edit_standard_cost') },
-    { key: 'specs', label: 'Spec lists', allowed: can('manage_items') },
-    { key: 'import', label: 'Import', allowed: can('manage_items') },
-    { key: 'minimums', label: 'Minimum levels', allowed: can('view_stock') || can('manage_items') },
-    { key: 'locations', label: 'Locations', allowed: can('manage_locations') || user.isOwner },
-    { key: 'settings', label: 'Settings', allowed: can('manage_settings') },
+    { group: 'Stock', key: 'stock', label: 'Stock', allowed: can('view_stock') },
+    { group: 'Stock', key: 'bundles', label: 'Bundles', allowed: can('view_bundles') },
+    { group: 'Stock', key: 'movements', label: 'Movements', allowed: can('view_movements') },
+    { group: 'Stock', key: 'minimums', label: 'Minimum levels', allowed: can('view_stock') || can('manage_items') },
+    { group: 'Record', key: 'adjust', label: 'Adjust', allowed: can('adjust_stock') },
+    { group: 'Record', key: 'transfer', label: 'Transfer', allowed: can('record_transfer') },
+    { group: 'Record', key: 'challans', label: 'Challans', allowed: can('record_transfer') || can('view_movements') },
+    { group: 'Record', key: 'opening', label: 'Opening stock', allowed: can('record_opening_stock') },
+    { group: 'Reports', key: 'trends', label: 'Trends', allowed: can('view_trends') },
+    { group: 'Reports', key: 'value', label: 'Stock value', allowed: can('view_costs') },
+    { group: 'Setup', key: 'items', label: 'Items', allowed: can('manage_items') || can('edit_standard_cost') },
+    { group: 'Setup', key: 'specs', label: 'Spec lists', allowed: can('manage_items') },
+    { group: 'Setup', key: 'import', label: 'Import', allowed: can('manage_items') },
+    { group: 'Setup', key: 'locations', label: 'Locations', allowed: can('manage_locations') || user.isOwner },
+    { group: 'Setup', key: 'settings', label: 'Settings', allowed: can('manage_settings') },
   ];
   const firstAllowed = nav.find((n) => n.allowed)?.key;
   const section = route.path[0] ?? firstAllowed ?? '';
@@ -174,7 +178,13 @@ function InventoryApp({ user }: { user: SessionUser }) {
         page = allowed('minimums') ? <MinimumsPage session={session} focus={route.query.get('group')} /> : <NoAccess />;
         break;
       case 'opening':
-        page = allowed('opening') ? <OpeningPage session={session} /> : <NoAccess />;
+        page = !allowed('opening') ? (
+          <NoAccess />
+        ) : route.path[1] === 'import' ? (
+          <OpeningImportPage session={session} />
+        ) : (
+          <OpeningPage session={session} />
+        );
         break;
       case 'trends':
         page = allowed('trends') ? <TrendsPage session={session} /> : <NoAccess />;
@@ -201,14 +211,17 @@ function InventoryApp({ user }: { user: SessionUser }) {
 
   return (
     <div className="app-shell">
-      <Header session={session} nav={nav} active={activeTab} />
-      <main className="app-body">
-        <div className="page">
-          <div className="page-inner">
-            <ErrorBoundary resetKey={window.location.hash}>{page}</ErrorBoundary>
+      <Header session={session} menuOpen={menuOpen} onMenuToggle={() => setMenuOpen((o) => !o)} />
+      <div className="app-frame">
+        <Sidebar nav={nav} active={activeTab} open={menuOpen} onNavigate={() => setMenuOpen(false)} />
+        <main className="app-body">
+          <div className="page">
+            <div className="page-inner">
+              <ErrorBoundary resetKey={window.location.hash}>{page}</ErrorBoundary>
+            </div>
           </div>
-        </div>
-      </main>
+        </main>
+      </div>
     </div>
   );
 }

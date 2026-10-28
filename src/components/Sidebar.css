@@ -1,0 +1,105 @@
+/* Panel + item styles follow production-monitor's SidebarNav.css. */
+.sidebar {
+  width: 240px;
+  flex-shrink: 0;
+  align-self: flex-start;
+  /* Stays in view while the page scrolls; scrolls itself if taller than the window. */
+  position: sticky;
+  top: 0;
+  max-height: 100vh;
+  overflow-y: auto;
+  padding: 24px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+/* Full-height panel background/border, independent of how tall the list is. */
+.app-frame::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 240px;
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+}
+.sidebar-group {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+/* Groups are separated by a rule so each heading starts a clear new section. */
+.sidebar-group + .sidebar-group {
+  margin-top: 14px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+/* Section heading: brand navy, bold, with a short accent bar — reads as a
+   heading rather than another link. */
+.sidebar-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--brand);
+  padding: 0 12px;
+  margin-bottom: 6px;
+}
+.sidebar-label::before {
+  content: '';
+  width: 3px;
+  height: 14px;
+  border-radius: 2px;
+  background: var(--brand);
+}
+/* Links are indented under their heading and set in a lighter tone. */
+.sidebar a {
+  display: block;
+  padding: 8px 12px 8px 23px;
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--muted);
+  text-decoration: none;
+  border-radius: 7px;
+}
+.sidebar a:hover {
+  background: var(--bg);
+  color: var(--ink);
+}
+.sidebar a.active {
+  background: var(--brand-light);
+  color: var(--brand);
+  font-weight: 600;
+}
+.sidebar a:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: -2px;
+}
+
+/* Small screens: the sidebar becomes a panel under the header, opened from the Menu button. */
+@media (max-width: 760px) {
+  .app-frame::before {
+    display: none;
+  }
+  .sidebar {
+    display: none;
+    position: static;
+    width: 100%;
+    max-height: none;
+    padding: 16px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+  }
+  .sidebar.open {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 16px;
+  }
+  .sidebar-group + .sidebar-group {
+    margin-top: 0;
+    padding-top: 0;
+    border-top: none;
+  }
+}

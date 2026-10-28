@@ -4,8 +4,28 @@
   flex-direction: column;
 }
 
-.app-body {
+/* Sidebar on the left, page on the right. */
+.app-frame {
   flex: 1;
   display: flex;
+  position: relative;
+}
+
+.app-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
   flex-direction: column;
+}
+
+@media (max-width: 760px) {
+  .app-frame {
+    flex-direction: column;
+  }
+}
+
+@media print {
+  .app-frame::before {
+    display: none;
+  }
 }

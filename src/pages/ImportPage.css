@@ -63,3 +63,12 @@ tr.attention-row td {
   width: auto;
   height: 32px;
 }
+
+/* Opening stock import (OpeningImportPage) */
+.oi-settings {
+  margin: 16px 0;
+}
+.oi-settings select.missing {
+  border-color: var(--amber);
+  background: var(--amber-light);
+}

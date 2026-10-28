@@ -4,12 +4,13 @@ import { Banner, LocationSelect, QuantityInput } from '../components/Common';
 import ItemPicker from '../components/ItemPicker';
 import { formatQty, FT_PER_M, getLengthUnit, todayKarachi } from '../format';
 import { useAction } from '../hooks';
+import { href } from '../router';
 import { itemById, locationName, type Session } from '../session';
 import { conversionHint, defaultUnit, parseLengths, toBase } from '../units';
 
 /**
  * Opening stock on the cut-over date, one item and location at a time.
- * (The spreadsheet importer for whole batches comes in stage 4.)
+ * A whole location from a Manager.io sheet: OpeningImportPage.
  */
 function OpeningPage({ session }: { session: Session }) {
   const allowed = session.stockLocationIds;
@@ -83,7 +84,8 @@ function OpeningPage({ session }: { session: Session }) {
       <h1 className="page-title">Opening stock</h1>
       <p className="page-sub">
         What is physically at each location on the cut-over date. Entered once per item and location; to correct it,
-        reverse it on the Movements page and enter it again.
+        reverse it on the Movements page and enter it again.{' '}
+        <a href={href('opening/import')}>Import a whole location from a Manager.io sheet</a>
       </p>
       <div className="card">
         <Banner kind="ok">{action.done}</Banner>

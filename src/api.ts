@@ -218,8 +218,14 @@ export interface TrendRow {
 export interface Business {
   id: string;
   legal_name: string;
-  trading_name: string | null;
+  /** Empty string (never null) when the Portal leaves it blank. */
+  trading_name: string;
   active: boolean;
+}
+
+/** Name to show for a business: its trading name, or the legal name when that's blank. */
+export function businessLabel(b: { legal_name: string; trading_name?: string | null }): string {
+  return b.trading_name?.trim() || b.legal_name;
 }
 
 export interface StaffProfile {
@@ -550,6 +556,8 @@ export async function recordOpening(o: {
   date: string | null;
   note: string | null;
   bundles: { length_ft: number }[] | null;
+  /** Groups several openings (e.g. one spreadsheet import) under one batch id. */
+  batchId?: string;
 }): Promise<{ movement_id: string; bundle_id: string | null; bundle_no: string | null }[]> {
   return unwrap(
     await inv().rpc('record_opening_balance', {
@@ -560,6 +568,7 @@ export async function recordOpening(o: {
       p_date: o.date,
       p_note: o.note,
       p_bundles: o.bundles,
+      p_batch_id: o.batchId ?? null,
     }),
   ) as { movement_id: string; bundle_id: string | null; bundle_no: string | null }[];
 }
@@ -698,6 +707,25 @@ export async function listImportBatches(): Promise<ImportBatch[]> {
 }
 
 /** Manager.io keys already linked to items (to flag rows that were imported before). */
+/** Manager.io key -> Inventory item, for every key linked by an item import (own keys and merged rows). */
+export async function managerKeyItems(): Promise<Map<string, string>> {
+  const rows = unwrap(await inv().from('item_manager_keys').select('manager_key, item_id')) as { manager_key: string; item_id: string }[];
+  return new Map(rows.map((r) => [r.manager_key, r.item_id]));
+}
+
+/** Items that already have an opening balance (not reversed) at a location. */
+export async function itemsWithOpening(locationId: string): Promise<Set<string>> {
+  const rows = unwrap(
+    await inv().from('stock_movements').select('id, item_id').eq('location_id', locationId).eq('movement_type', 'opening_balance').limit(5000),
+  ) as { id: string; item_id: string }[];
+  // In chunks: each id goes into the request URL.
+  const reversed = new Set<string>();
+  for (let i = 0; i < rows.length; i += 150) {
+    for (const id of await reversedIds(rows.slice(i, i + 150).map((r) => r.id))) reversed.add(id);
+  }
+  return new Set(rows.filter((r) => !reversed.has(r.id)).map((r) => r.item_id));
+}
+
 export async function linkedManagerKeys(): Promise<Set<string>> {
   const rows = unwrap(await inv().from('item_manager_keys').select('manager_key')) as { manager_key: string }[];
   return new Set(rows.map((r) => r.manager_key));

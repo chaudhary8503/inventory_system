@@ -38,8 +38,9 @@ function ChallanPage({ challanId, autoPrint }: { challanId: string | undefined; 
         {c.cancelled && <div className="challan-cancelled">CANCELLED</div>}
         <header className="challan-head">
           <div>
-            <div className="challan-business">{c.business?.name ?? 'Powerant'}</div>
-            {c.business?.legal_name && c.business.legal_name !== c.business.name && <div className="challan-small">{c.business.legal_name}</div>}
+            {/* get_challan sends name = coalesce(trading_name, legal_name), which is '' when the trading name is blank. */}
+            <div className="challan-business">{c.business?.name.trim() || c.business?.legal_name || 'Powerant'}</div>
+            {c.business?.name.trim() && c.business.legal_name !== c.business.name && <div className="challan-small">{c.business.legal_name}</div>}
             {c.business?.address && <div className="challan-small">{c.business.address}</div>}
             {c.business?.phone && <div className="challan-small">Phone: {c.business.phone}</div>}
           </div>
