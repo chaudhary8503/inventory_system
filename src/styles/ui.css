@@ -358,3 +358,30 @@ td.wrap {
   max-width: 480px;
   margin-bottom: 20px;
 }
+
+/* Cut pieces on a transfer line (TransferPage) */
+.cut-piece {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 8px;
+}
+.cut-piece-no {
+  flex-shrink: 0;
+  width: 56px;
+  font-size: 12.5px;
+}
+.cut-piece .inline-input {
+  flex: 1;
+  min-width: 0;
+}
+.cut-piece-foot {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  margin-top: 10px;
+}
+.cut-piece-foot .hint {
+  margin-top: 0;
+}

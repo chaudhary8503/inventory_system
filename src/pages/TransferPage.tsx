@@ -13,16 +13,20 @@ interface DraftLine {
   itemId: string;
   bundle?: Bundle;
   whole: boolean;
+  /** Amount for non-cable items. */
   amount: string;
+  /** Cable cut from a bundle: one length per piece, all in `unit`. */
+  pieces: string[];
   unit: string;
 }
 
 let nextKey = 1;
-const newLine = (itemId = ''): DraftLine => ({ key: nextKey++, itemId, whole: true, amount: '', unit: '' });
+const newLine = (itemId = ''): DraftLine => ({ key: nextKey++, itemId, whole: true, amount: '', pieces: [''], unit: '' });
 
 /**
  * A delivery challan: several lines from one location to another. Cable moves
- * by bundle (whole, or a cut length). Saving prints the challan.
+ * by bundle: the whole bundle, or one or more cut pieces (each piece becomes
+ * its own numbered bundle at the destination). Saving prints the challan.
  */
 function TransferPage({ session, query }: { session: Session; query: URLSearchParams }) {
   const allowed = session.stockLocationIds;
@@ -50,15 +54,19 @@ function TransferPage({ session, query }: { session: Session; query: URLSearchPa
     const isCable = item?.category === 'finished_cable';
     const unit = l.unit || defaultUnit(item);
     let quantity: number | null = null;
+    /** Cut pieces in feet (cable, "Cut lengths" only). */
+    let pieces: (number | null)[] = [];
     let problem: string | null = null;
-    if (!item) return { l, item, isCable, unit, quantity, problem: null as string | null, empty: true };
+    if (!item) return { l, item, isCable, unit, quantity, pieces, problem: null as string | null, empty: true };
     if (isCable) {
+      pieces = l.whole ? [] : l.pieces.map((p) => toBase(item, p, unit));
       if (!l.bundle) problem = 'Choose the bundle.';
       else if (l.whole) quantity = l.bundle.remaining_ft;
       else {
-        quantity = toBase(item, l.amount, unit);
-        if (quantity === null || quantity <= 0) problem = 'Enter a length greater than 0.';
-        else if (quantity > l.bundle.remaining_ft) problem = `Bundle ${l.bundle.bundle_no} only has ${formatQty(l.bundle.remaining_ft, 'ft')}.`;
+        quantity = Math.round(pieces.reduce<number>((sum, p) => sum + (p ?? 0), 0) * 1000) / 1000;
+        if (pieces.some((p) => p === null || p <= 0)) problem = 'Enter a length greater than 0 for every piece.';
+        else if (quantity > l.bundle.remaining_ft)
+          problem = `The pieces add up to ${formatQty(quantity, 'ft')}, but bundle ${l.bundle.bundle_no} only has ${formatQty(l.bundle.remaining_ft, 'ft')}.`;
       }
     } else {
       quantity = toBase(item, l.amount, unit);
@@ -66,7 +74,7 @@ function TransferPage({ session, query }: { session: Session; query: URLSearchPa
       if (quantity === null || quantity <= 0) problem = 'Enter an amount greater than 0.';
       else if (have !== undefined && quantity > have) problem = `Only ${formatQty(have, item.base_unit)} here.`;
     }
-    return { l, item, isCable, unit, quantity, problem, empty: false };
+    return { l, item, isCable, unit, quantity, pieces, problem, empty: false };
   });
   const filled = checked.filter((c) => !c.empty);
   const sameBundleTwice = new Set(filled.map((c) => c.l.bundle?.bundle_id).filter(Boolean)).size !==
@@ -76,11 +84,13 @@ function TransferPage({ session, query }: { session: Session; query: URLSearchPa
   const submit = async (e: FormEvent) => {
     e.preventDefault();
     if (!ready) return;
-    const payload: TransferLine[] = filled.map((c) => ({
-      item_id: c.l.itemId,
-      quantity: c.isCable && c.l.whole ? null : c.quantity,
-      bundle_id: c.isCable ? (c.l.bundle?.bundle_id ?? null) : null,
-    }));
+    // One challan line per cut piece; the database cuts them from the bundle one by one.
+    const payload: TransferLine[] = filled.flatMap((c): TransferLine[] => {
+      if (!c.isCable) return [{ item_id: c.l.itemId, quantity: c.quantity, bundle_id: null }];
+      const bundleId = c.l.bundle?.bundle_id ?? null;
+      if (c.l.whole) return [{ item_id: c.l.itemId, quantity: null, bundle_id: bundleId }];
+      return c.pieces.map((p) => ({ item_id: c.l.itemId, quantity: p, bundle_id: bundleId }));
+    });
     let docId = '';
     const ok = await action.run(async () => {
       docId = await recordTransferDocument({
@@ -198,20 +208,44 @@ function TransferPage({ session, query }: { session: Session; query: URLSearchPa
                           aria-label="Whole bundle or a length"
                         >
                           <option value="whole">Whole bundle{c.l.bundle ? ` (${formatQty(c.l.bundle.remaining_ft, 'ft')})` : ''}</option>
-                          <option value="cut">Cut a length</option>
+                          <option value="cut">Cut lengths</option>
                         </select>
                       </div>
                       {!c.l.whole && (
                         <>
-                          <div className="spacer" />
-                          <QuantityInput
-                            item={c.item}
-                            amount={c.l.amount}
-                            unit={c.unit}
-                            onAmount={(v) => update(c.l.key, { amount: v })}
-                            onUnit={(u) => update(c.l.key, { unit: u })}
-                          />
-                          <div className="hint">{conversionHint(c.item, c.l.amount, c.unit)}</div>
+                          {c.l.pieces.map((p, pi) => (
+                            <div className="cut-piece" key={pi}>
+                              <span className="cut-piece-no sub">Piece {pi + 1}</span>
+                              <QuantityInput
+                                item={c.item}
+                                amount={p}
+                                unit={c.unit}
+                                onAmount={(v) => update(c.l.key, { pieces: c.l.pieces.map((x, xi) => (xi === pi ? v : x)) })}
+                                onUnit={(u) => update(c.l.key, { unit: u })}
+                              />
+                              {c.l.pieces.length > 1 && (
+                                <button
+                                  type="button"
+                                  className="link-btn"
+                                  aria-label={`Remove piece ${pi + 1}`}
+                                  onClick={() => update(c.l.key, { pieces: c.l.pieces.filter((_, xi) => xi !== pi) })}
+                                >
+                                  Remove
+                                </button>
+                              )}
+                            </div>
+                          ))}
+                          <div className="cut-piece-foot">
+                            <button type="button" className="btn btn-secondary btn-small" onClick={() => update(c.l.key, { pieces: [...c.l.pieces, ''] })}>
+                              Add another piece
+                            </button>
+                            {c.l.bundle && (
+                              <span className="hint">
+                                {c.l.pieces.length} piece{c.l.pieces.length === 1 ? '' : 's'} · {formatQty(c.quantity ?? 0, 'ft')} of{' '}
+                                {formatQty(c.l.bundle.remaining_ft, 'ft')} · {formatQty(Math.max(0, c.l.bundle.remaining_ft - (c.quantity ?? 0)), 'ft')} left on the bundle
+                              </span>
+                            )}
+                          </div>
                         </>
                       )}
                     </div>
@@ -236,7 +270,7 @@ function TransferPage({ session, query }: { session: Session; query: URLSearchPa
               {c.problem && c.l.itemId && <div className="field-problem">{c.problem}</div>}
             </div>
           ))}
-          {sameBundleTwice && <Banner kind="error">The same bundle is on two lines.</Banner>}
+          {sameBundleTwice && <Banner kind="error">The same bundle is on two lines. Add the extra lengths as pieces on one line instead.</Banner>}
           <div className="form-actions">
             <button type="button" className="btn btn-secondary" onClick={() => setLines((ls) => [...ls, newLine()])}>
               Add another item
